@@ -1,0 +1,1276 @@
+<!DOCTYPE html><html lang="de"><head><meta charset="utf-8"><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Trainer Dreiecke und Vierecke</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout wie Trainer Prozentrechnung: Levelspiel an Deck des Piratenschiffs. Startseite = Level-Pfad (Schatzkarten-Weg), Spielfeld = weiße Aufgabenkarte */
+:root{
+  color-scheme:dark;
+  --holz1:#3a2414; --holz2:#2e1c10; --holz3:#24160c;
+  --text:#ffffff; --leise:#ecd9b8; --glas:rgba(255,255,255,.08); --glasrand:rgba(255,255,255,.22);
+  --gold:#ffd54a; --goldd:#f29a00; --gruen:#14a394; --gruend:#0a6b61;
+  --karte:#ffffff; --tinte:#111111; --ok:#1b7a3e; --okbg:#e3f5e9; --err:#b3261e; --errbg:#fdecea;
+  --dunkel:#3b2412;
+  --font:Arial,"Liberation Sans",Helvetica,sans-serif;
+}
+*{box-sizing:border-box}
+html{background:var(--holz2)}
+body{margin:0;min-height:100vh;color:var(--text);font-family:var(--font);font-size:18px;line-height:1.45;
+  background:
+   radial-gradient(700px 380px at 90% -5%,rgba(255,190,90,.30) 0%,transparent 60%),
+   radial-gradient(600px 360px at 5% 105%,rgba(20,184,166,.20) 0%,transparent 60%),
+   repeating-linear-gradient(0deg,rgba(0,0,0,.38) 0 3px,transparent 3px 66px),
+   repeating-linear-gradient(90deg,rgba(255,255,255,.022) 0 2px,transparent 2px 11px),
+   linear-gradient(180deg,var(--holz1) 0%,var(--holz2) 55%,var(--holz3) 100%);background-attachment:fixed;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 28px}
+#himmel{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:0}
+.wrap{position:relative;z-index:1;max-width:1000px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap}
+.schule{font-size:.75rem;letter-spacing:.14em;color:var(--leise)}
+h1{margin:2px 0 0;font-size:clamp(1.7rem,4.5vw,2.5rem);line-height:1.1}
+h1 span{color:var(--gold)}
+.zaehler{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.1);border:1.5px solid rgba(255,255,255,.25);border-radius:999px;padding:7px 16px;font-weight:700;font-size:1.2rem;font-variant-numeric:tabular-nums;transition:transform .25s}
+.zaehler svg{width:28px;height:28px}
+.zaehlwerk{display:flex;gap:10px;flex-wrap:wrap}
+.bonus{display:inline-flex;align-items:center;gap:3px;font-size:.85rem;font-weight:700;color:var(--dunkel);background:#ffe98a;border-radius:999px;padding:2px 9px}
+.topf{display:flex;align-items:center;gap:6px;justify-content:center;color:var(--dunkel);font-size:.95rem}
+.topf i{width:16px;height:16px;border-radius:50%;border:2px solid #f2a900;display:inline-block}
+.topf i.voll{background:#ffd23f}
+.topf svg{width:30px;height:30px}
+.mflug{position:fixed;left:50%;top:45%;width:200px;height:200px;margin:-100px 0 0 -100px;z-index:50;pointer-events:none;perspective:600px}
+.mflug svg{width:100%;height:100%;filter:drop-shadow(0 0 22px rgba(255,213,74,.9))}
+.zaehler.puls{transform:scale(1.25);box-shadow:0 0 30px rgba(255,213,74,.7)}
+.sub{color:#f3e6cf;margin:0}
+#app{display:flex;flex-direction:column;gap:18px}
+/* Level-Pfad (gestrichelter Weg wie auf einer Schatzkarte) */
+.levels{position:relative;display:flex;flex-direction:column;gap:20px;padding-left:66px}
+.levels:before{content:"";position:absolute;left:28px;top:36px;bottom:36px;border-left:4px dashed rgba(217,71,43,.8)}
+.lv{position:relative;border-radius:20px;padding:16px 20px;background:var(--glas);border:1.5px solid var(--glasrand)}
+.lv .badge{position:absolute;left:-66px;top:14px;width:58px;height:58px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:1.5rem;background:#6b4426;border:3px solid rgba(255,255,255,.35)}
+.lv.aktiv{background:linear-gradient(135deg,rgba(255,213,74,.16),rgba(20,184,166,.14));border:2px solid var(--gold);box-shadow:0 0 40px rgba(255,213,74,.22)}
+.lv.aktiv .badge{background:var(--gold);color:var(--dunkel);border-color:#fff}
+.lv.zu{opacity:.62}
+.lvkopf{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.tag{font-size:.8rem;letter-spacing:.18em;color:var(--gold);font-weight:700}
+.lvkopf h2{margin:2px 0 0;font-size:1.45rem;text-wrap:balance}
+.lv.zu h2{color:#e8d6bd}
+.klein{font-size:.85rem;color:var(--leise)}
+.zahl{display:flex;align-items:center;gap:6px;color:#f7ecd9;font-size:.95rem}
+.zahl svg{width:20px;height:20px}
+.bahn{position:relative;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:14px;margin-top:16px}
+.bahn .linie{position:absolute;left:12.5%;right:12.5%;top:41px;height:6px;border-radius:3px;background:rgba(255,255,255,.2)}
+.bahn .linie i{display:block;height:100%;border-radius:3px;background:var(--gold)}
+.node{position:relative;display:flex;flex-direction:column;align-items:center;gap:7px;text-align:center;min-width:0}
+.kreis{width:88px;height:88px;border-radius:50%;display:grid;place-items:center;font-size:1.6rem;font-weight:800;background:#6b4426;border:4px solid rgba(255,255,255,.3);color:#fff;padding:0;cursor:pointer}
+.node.fertig .kreis{background:radial-gradient(circle at 35% 30%,#ffe98a,#f5b400);color:#5a3b00;border-color:#fff3c4}
+.node.jetzt .kreis{background:#fff;color:var(--dunkel);border-color:var(--gold);box-shadow:0 0 0 8px rgba(255,213,74,.25),0 0 30px rgba(255,213,74,.7);animation:puls 2s ease-in-out infinite}
+.node.zu .kreis{background:#3a2616;color:#b39a7a;cursor:not-allowed}
+@keyframes puls{50%{box-shadow:0 0 0 14px rgba(255,213,74,.12),0 0 40px rgba(255,213,74,.9)}}
+.node b{font-size:1rem}
+.sterne{display:flex;gap:3px}
+.sterne svg{width:28px;height:28px}
+.btn{font:inherit;cursor:pointer;border:0;background:var(--gruen);color:#fff;font-weight:800;font-size:1rem;border-radius:999px;padding:9px 22px;box-shadow:0 5px 0 var(--gruend);touch-action:manipulation}
+.btn:active{transform:translateY(3px);box-shadow:0 2px 0 var(--gruend)}
+.btn.hell{background:rgba(255,255,255,.14);box-shadow:0 5px 0 rgba(0,0,0,.35)}
+.btn.gold{background:var(--gold);color:var(--dunkel);box-shadow:0 5px 0 #b88a00}
+button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-offset:3px}
+.boss{background:linear-gradient(135deg,rgba(220,60,60,.22),rgba(255,213,74,.10));border:1.5px dashed rgba(255,120,120,.7)}
+.boss .badge{background:#7a1f2b}
+.boss.aktiv{border:2px solid #ff7a7a;box-shadow:0 0 40px rgba(255,90,90,.3)}
+.boss.aktiv .badge{background:#d23a3a;color:#fff}
+.bossrow{display:flex;align-items:center;gap:16px;margin-top:12px;flex-wrap:wrap}
+.master{background:linear-gradient(135deg,rgba(20,184,166,.22),rgba(255,213,74,.08));border:1.5px dashed rgba(20,184,166,.85)}
+.master .badge{background:#0d7f73;font-size:1.25rem}
+.master .tag{color:#5eead4}
+details{border:1.5px dashed var(--glasrand);border-radius:12px;padding:8px 14px;color:var(--leise)}
+summary{cursor:pointer}
+.lehrer{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-top:10px}
+input[type=text]{font:inherit;border:2px solid var(--glasrand);background:rgba(0,0,0,.25);color:#fff;border-radius:10px;padding:8px 12px;width:12em;max-width:100%}
+.msg{font-size:.9rem}
+/* Spielfeld */
+.bar{display:flex;flex-wrap:wrap;gap:10px;justify-content:space-between;align-items:center}
+.bar .titel{font-weight:700}
+.bar .titel small{display:block;font-weight:400;color:var(--leise);font-size:.85rem}
+.dots{display:flex;gap:6px;flex-wrap:wrap}
+.dot{width:18px;height:18px;border-radius:50%;border:2px solid rgba(255,255,255,.35)}
+.dot.ok{background:#3fd08a;border-color:#3fd08a} .dot.err{background:#ff6b6b;border-color:#ff6b6b} .dot.now{border-color:var(--gold);box-shadow:0 0 10px var(--gold)}
+.dot.gelb{background:#ffd54a;border-color:#ffd54a}
+.card{position:relative;background:var(--karte);color:var(--tinte);border-radius:20px;padding:20px;display:flex;flex-direction:column;gap:14px;box-shadow:0 20px 50px rgba(0,0,0,.35)}
+.frage{font-size:1.3rem;font-weight:700;margin:0}
+.fig{display:flex;justify-content:center}
+.fig svg{width:100%;max-width:460px;height:auto}
+.fig svg.mess{width:auto;max-width:none}
+.opts{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px}
+.opts button{font:inherit;cursor:pointer;padding:14px 10px;font-size:1.1rem;font-weight:700;border:2.5px solid var(--dunkel);border-radius:14px;background:#fff;color:var(--dunkel);box-shadow:0 4px 0 var(--dunkel);touch-action:manipulation}
+.opts button:disabled{cursor:default}
+.opts button.richtig{background:var(--okbg);border-color:var(--ok);color:var(--ok);box-shadow:0 4px 0 var(--ok)}
+.opts button.falsch{background:var(--errbg);border-color:var(--err);color:var(--err);box-shadow:0 4px 0 var(--err)}
+.opts button.gelb{background:#FFF3B0;border-color:#C99700;color:#7a5a00;box-shadow:0 4px 0 #C99700}
+.fb{padding:12px 16px;font-weight:700;border-radius:12px}
+.fb.ok{background:var(--okbg);color:var(--ok)} .fb.err{background:var(--errbg);color:var(--err)}
+.fb.hinweis{background:#FFF3B0;color:#7a5a00}
+.fb > span{display:block;font-weight:400;color:var(--tinte);margin-top:4px}
+.row{display:flex;flex-wrap:wrap;gap:12px;justify-content:center}
+.ende{align-items:center;text-align:center}
+.ende .gross{display:flex;gap:10px}
+.ende .gross svg{width:64px;height:64px}
+.ende .frage{color:var(--dunkel)}
+.form{display:flex;flex-direction:column;gap:16px;font-size:1.25rem}
+.glx{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.glx > span:first-child{font-weight:700}
+.form input.fx{font:inherit;font-size:1.25rem;width:6em;text-align:center;border:2.5px solid var(--dunkel);border-radius:12px;padding:6px;color:#111;background:#fff}
+.form input.fx.gelb{background:#FFF3B0;border-color:#C99700}
+.form input.fx.gut{background:var(--okbg);border-color:var(--ok)}
+.form input.fx.schlecht{background:var(--errbg);border-color:var(--err)}
+.form .einheit{font-weight:700}
+/* Einheiten-Knöpfe */
+.ewahl{display:inline-flex;gap:6px;flex-wrap:wrap}
+.eb{font:inherit;font-size:1.05rem;font-weight:700;cursor:pointer;min-width:3.2em;border:2.5px solid var(--dunkel);border-radius:10px;background:#fff;color:var(--dunkel);padding:6px 10px;box-shadow:0 3px 0 var(--dunkel);touch-action:manipulation}
+.eb.an{background:#14b8a6;border-color:#0d7f73;color:#fff;box-shadow:0 3px 0 #0d7f73}
+.ewahl.gelb .eb.an{background:#FFF3B0;border-color:#C99700;color:#7a5a00;box-shadow:0 3px 0 #C99700}
+.ewahl.gut .eb.an{background:var(--okbg);border-color:var(--ok);color:var(--ok);box-shadow:0 3px 0 var(--ok)}
+.ewahl.schlecht .eb.an{background:var(--errbg);border-color:var(--err);color:var(--err);box-shadow:0 3px 0 var(--err)}
+.eb:disabled{cursor:default}
+/* Produktbeschreibung im Online-Shop */
+.shop{width:100%;max-width:440px;border:2px solid #e3ddd2;border-radius:16px;padding:14px 18px;background:#fbfaf7;color:#111;font-size:1rem;line-height:1.4}
+.shop .tagS{font-size:.72rem;letter-spacing:.14em;color:#0d7f73;font-weight:700}
+.shop h3{margin:4px 0 2px;font-size:1.15rem}
+.shop .preis{color:#d9472b;font-weight:800;font-size:1.25rem}
+.shop ul{margin:8px 0 10px;padding-left:20px}
+.shop .vor{font:inherit;cursor:pointer;border:2px solid #0d7f73;background:#fff;color:#0d7f73;border-radius:999px;padding:4px 12px;font-weight:700;font-size:.9rem;touch-action:manipulation}
+.shop .korb{display:inline-block;background:#e2a21b;color:var(--dunkel);font-weight:700;border-radius:999px;padding:5px 14px;font-size:.9rem}
+/* Sternflug */
+.flug{position:fixed;left:50%;top:45%;width:170px;height:170px;margin:-85px 0 0 -85px;z-index:50;pointer-events:none;filter:drop-shadow(0 0 25px rgba(255,213,74,.9))}
+.glitzer{position:fixed;z-index:49;width:10px;height:10px;border-radius:50%;background:#fff3b0;pointer-events:none;box-shadow:0 0 12px #ffd54a}
+.banner{background:linear-gradient(90deg,var(--gold),#ffe98a);color:var(--dunkel);font-weight:800;border-radius:14px;padding:10px 16px;text-align:center}
+.fuss{text-align:right;color:var(--leise);font-size:.82rem;font-style:italic;margin:6px 0 0}
+.fehlz{font-weight:700;font-size:.95rem;background:rgba(255,255,255,.12);border:1.5px solid rgba(255,255,255,.3);border-radius:999px;padding:5px 14px}
+.fehlz.zuviel{background:#ff6b6b;border-color:#ff6b6b;color:#fff}
+@media (max-width:640px){
+  .bahn{grid-template-columns:repeat(2,minmax(0,1fr))}.bahn .linie{display:none}
+  .levels{padding-left:0}.levels:before{display:none}.lv .badge{position:static;width:44px;height:44px;font-size:1.1rem;margin-bottom:8px}
+  .kreis{width:72px;height:72px;font-size:1.3rem}}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head><body>
+<svg id="himmel" aria-hidden="true"></svg>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff2a8"/><stop offset=".45" stop-color="#ffd23f"/><stop offset="1" stop-color="#f29a00"/></linearGradient>
+<symbol id="credit" viewBox="0 0 300 300">
+<circle cx="150" cy="150" r="128" fill="#f2a900" stroke="#3a2200" stroke-width="7"/>
+<g id="riffel"></g>
+<circle cx="150" cy="150" r="104" fill="#ffd23f" stroke="#3a2200" stroke-width="5"/>
+<circle cx="150" cy="150" r="92" fill="none" stroke="#c98500" stroke-width="3" stroke-dasharray="3 7" stroke-linecap="round"/>
+<path d="M226 78 A104 104 0 0 1 78 226 A120 120 0 0 0 226 78Z" fill="#f0a800" opacity=".9"/>
+<path d="M78 96 A92 92 0 0 1 132 58" fill="none" stroke="#fff6c8" stroke-width="9" stroke-linecap="round"/>
+<path d="M66 124 A92 92 0 0 1 70 112" fill="none" stroke="#fff6c8" stroke-width="9" stroke-linecap="round"/>
+<g stroke="#3a2200" stroke-linejoin="round">
+<rect x="62" y="116" width="100" height="68" rx="4" fill="#d99400" stroke-width="8"/>
+<rect x="178" y="122" width="60" height="60" rx="4" fill="#d99400" stroke-width="8"/>
+</g>
+<rect x="72" y="126" width="80" height="48" fill="none" stroke="#ffe680" stroke-width="3.5"/>
+<rect x="188" y="132" width="40" height="40" fill="none" stroke="#ffe680" stroke-width="3.5"/>
+<path d="M0 -14 Q2 -2 14 0 Q2 2 0 14 Q-2 2 -14 0 Q-2 -2 0 -14Z" fill="#fff" transform="translate(86 84) scale(.7)"/>
+</symbol>
+  <symbol id="st" viewBox="0 0 24 24"><path d="M12 2.6l2.75 5.9 6.45.75-4.8 4.4 1.3 6.35L12 16.8 6.3 20l1.3-6.35-4.8-4.4 6.45-.75z" stroke-linejoin="round"/></symbol>
+</defs></svg>
+<div class="wrap">
+  <div class="top">
+    <div><div class="schule">EMIL-PETRI-SCHULE ARNSTADT – MATHEMATIK KLASSE 7</div><h1>Trainer <span>Dreiecke und Vierecke</span></h1></div>
+    <div class="zaehlwerk"><div class="zaehler" id="zaehler" aria-label="Gesammelte Sterne"><svg><use href="#st" fill="url(#gold)" stroke="#b86e00" stroke-width="1.2"/></svg><span id="zahl">0</span></div>
+    <div class="zaehler" id="muenzer" aria-label="Credits"><svg viewBox="0 0 300 300"><use href="#credit"/></svg><span id="mzahl">0</span></div></div>
+  </div>
+  <main id="app"></main>
+  <p class="fuss">Erstellt von Marion Klugmann (November 2026) mit freundlicher Unterstützung von Claude.</p>
+</div>
+
+<script>
+(function(){
+/* Riffelrand der Golddublone */
+(function(){let s="";for(let k=0;k<24;k++){const w=k*15,a=w*Math.PI/180;s+=`<rect x="-5" y="-8" width="10" height="16" rx="3" transform="translate(${(150+116*Math.cos(a)).toFixed(1)} ${(150+116*Math.sin(a)).toFixed(1)}) rotate(${w})" fill="#ffd84d" stroke="#3a2200" stroke-width="2.5"/>`;}
+  document.getElementById("riffel").innerHTML=s;})();
+
+/* ================= Daten ================= */
+const KEY="trainer-dreiecke-vierecke-v1", CODE_H=1428710757, RUNDE=10, FEHLER_ERLAUBT=2;
+const erlaubt=n=>n<=5?1:FEHLER_ERLAUBT; /* kurze Runden (5 Sachaufgaben): nur 1 Fehler */
+const codeHash=t=>{let h=5381;for(const c of t)h=(h*33^c.charCodeAt(0))>>>0;return h;};
+const LEVELS=[
+  {nr:1,name:"Das Rechteck",spiele:[
+    {id:"1a",nr:"1-1",name:"Umfang und Flächeninhalt",gen:g11},
+    {id:"1b",nr:"1-2",name:"Flächeneinheiten umrechnen",gen:g12},
+    {id:"1c",nr:"1-3",name:"Fehlende Seite",gen:g13},
+    {id:"1d",nr:"1-4",name:"Sachaufgaben",gen:g14,runde:5}]},
+  {nr:2,name:"Das Parallelogramm",spiele:[
+    {id:"2a",nr:"2-1",name:"Erkennen",gen:g21},
+    {id:"2b",nr:"2-2",name:"Flächeninhalt",gen:g22},
+    {id:"2c",nr:"2-3",name:"Fehlende Größe",gen:g23},
+    {id:"2d",nr:"2-4",name:"Sachaufgaben",gen:g24,runde:5}]},
+  {nr:3,name:"Das Dreieck",spiele:[
+    {id:"3a",nr:"3-1",name:"Winkelarten",gen:g31},
+    {id:"3b",nr:"3-2",name:"Dreiecke einteilen",gen:g32},
+    {id:"3c",nr:"3-3",name:"Flächeninhalt",gen:g33},
+    {id:"3d",nr:"3-4",name:"Sachaufgaben",gen:g34,runde:5}]},
+  {nr:4,name:"Das Trapez",info:"kommt bald"},
+  {nr:5,name:"Zusammengesetzte Figuren",info:"kommt bald"}];
+const ALLE=LEVELS.flatMap(l=>l.spiele||[]);
+const ALLE_GEBAUT=LEVELS.every(l=>l.spiele);
+const MASTER_GEBAUT=false;
+const BONUS_PRO_MUENZE=5;
+let S={stars:{},bonus:{},topf:0,muenzen:0,lehrer:false};
+try{const r=localStorage.getItem(KEY);if(r)S=Object.assign(S,JSON.parse(r));}catch(e){}
+S.bonus=S.bonus||{};S.topf=S.topf||0;S.muenzen=S.muenzen||0;
+function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
+const stars=id=>S.stars[id]||0;
+function offen(sp){if(S.lehrer)return true;const i=ALLE.findIndex(t=>t.id===sp.id);return ALLE.slice(0,i).every(t=>stars(t.id)>=1);}
+const bossOffen=()=>ALLE_GEBAUT&&(S.lehrer||ALLE.every(t=>stars(t.id)>=1));
+const summe=()=>Object.values(S.stars).reduce((a,b)=>a+b,0);
+
+/* ================= Hilfen ================= */
+const rnd=(a,b)=>a+Math.floor(Math.random()*(b-a+1));
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a;};
+const rund=x=>Math.round(x*1e6)/1e6;
+const esc=s=>String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;");
+function mc(q,svg,correct,wrongs,ex){const w=[...new Set(wrongs.filter(x=>x!==correct))].slice(0,3);const opts=shuffle([correct,...w]);return{q,svg,opts,ans:opts.indexOf(correct),ex};}
+const zahl=s=>{let t=String(s).replace(/\s/g,"");if(/^[1-9]\d{0,2}(\.\d{3})+(,\d+)?$/.test(t))t=t.replace(/\./g,""); /* Tausenderpunkt: 1.200 = 1200 */
+  return parseFloat(t.replace(",","."));};
+const gleich=(a,b)=>!isNaN(a)&&Math.abs(a-b)<1e-9;
+const fx=(k,lab)=>`<input type="text" class="fx" data-k="${k}" inputmode="decimal" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="${esc(lab)}">`;
+
+/* Zahlen und Größen: Komma, Tausender mit Leerzeichen (2 400), Einheit immer dabei */
+const NB=" ";
+const fz=x=>{const t=String(rund(x)).split(".");t[0]=t[0].replace(/\B(?=(\d{3})+(?!\d))/g,NB);return t.join(",");};
+const L=(v,u)=>fz(v)+NB+u;
+const QU=u=>u+"²";
+const ORD=["mm","cm","dm","m","km"], LF={mm:.1,cm:1,dm:10,m:100,km:100000};
+const convL=(v,a,b)=>rund(v*LF[a]/LF[b]);
+const istFlaeche=u=>/²$/.test(u)||u==="a"||u==="ha";
+/* Einheiten-Knöpfe: immer Längen- und Flächeneinheiten gemischt (z. B. cm · m · cm² · m²) */
+function wahl(u,v){const n=v&&v!==u?v:{mm:"cm",cm:"m",dm:"cm",m:"cm",km:"m"}[u];const [x,y]=[u,n].sort((p,q)=>ORD.indexOf(p)-ORD.indexOf(q));return[x,y,QU(x),QU(y)];}
+function einhTipp(f,v,us){
+  if(!f.units)return"";
+  const treffer=f.ok.find(([n])=>gleich(v,n));if(!treffer)return"";
+  const soll=treffer[1];if(soll===us)return"";
+  if(!istFlaeche(soll)&&istFlaeche(us))return"Die Zahl stimmt. Gesucht ist eine Länge – wähle eine Längeneinheit (ohne ²).";
+  if(istFlaeche(soll)&&!istFlaeche(us))return"Die Zahl stimmt. Ein Flächeninhalt braucht eine Flächeneinheit (mit ²).";
+  return"Die Zahl stimmt. Prüfe die Einheit.";}
+
+/* ================= Zeichnung: Rechteck / Quadrat nach der Arbeitsblattvorlage ================= */
+/* rechter Winkel: Kreisbogen mit Punkt · gleich lange Seiten: zwei Striche */
+function eckBogen(cx,cy,dx,dy){const r=16,s=dx*dy>0?1:0;
+  return `<path d="M${cx+dx*r} ${cy}A${r} ${r} 0 0 ${s} ${cx} ${cy+dy*r}" fill="none" stroke="#111" stroke-width="2"/><circle cx="${(cx+dx*r*.42).toFixed(1)}" cy="${(cy+dy*r*.42).toFixed(1)}" r="2.4" fill="#111"/>`;}
+function rechteck(o){
+  let w,h;
+  if(o.quad){w=h=170;}else{const q=o.rb/o.ra;if(q<=1){w=260;h=Math.max(80,Math.round(260*q));}else{h=200;w=Math.max(80,Math.round(200/q));}}
+  const x0=Math.round(190-w/2),y0=16,x1=x0+w,y1=y0+h,mx=(x0+x1)/2,my=(y0+y1)/2;
+  let s=`<svg viewBox="0 0 460 ${h+64}" role="img" aria-label="${o.quad?"Quadrat":"Rechteck"}"><rect x="${x0}" y="${y0}" width="${w}" height="${h}" fill="#e6f7f4" stroke="#111" stroke-width="3"/>`;
+  s+=eckBogen(x0,y1,1,-1)+eckBogen(x1,y1,-1,-1)+eckBogen(x0,y0,1,1)+eckBogen(x1,y0,-1,1);
+  if(o.quad){
+    const tH=(x,y)=>`<line x1="${x-4}" y1="${y-8}" x2="${x-4}" y2="${y+8}" stroke="#111" stroke-width="2.5"/><line x1="${x+4}" y1="${y-8}" x2="${x+4}" y2="${y+8}" stroke="#111" stroke-width="2.5"/>`;
+    const tV=(x,y)=>`<line x1="${x-8}" y1="${y-4}" x2="${x+8}" y2="${y-4}" stroke="#111" stroke-width="2.5"/><line x1="${x-8}" y1="${y+4}" x2="${x+8}" y2="${y+4}" stroke="#111" stroke-width="2.5"/>`;
+    s+=tH(mx,y0)+tH(mx,y1)+tV(x0,my)+tV(x1,my);}
+  s+=`<text x="${mx}" y="${y1+36}" text-anchor="middle" font-size="21" font-weight="700" fill="#111">${o.la}</text>`;
+  if(!o.quad&&o.lb)s+=`<text x="${x1+14}" y="${my+7}" font-size="21" font-weight="700" fill="#111">${o.lb}</text>`;
+  if(o.mitte)s+=`<text x="${mx}" y="${my+(o.quad?-16:7)}" text-anchor="middle" font-size="19" font-weight="700" fill="#0d5f57" stroke="#e6f7f4" stroke-width="5" paint-order="stroke">${o.mitte}</text>`;
+  return s+`</svg>`;}
+
+/* ================= Level 1 · Das Rechteck ================= */
+/* 1-1 Umfang und Flächeninhalt: 0★ ganze Zahlen, gleiche Einheit · 1★ Kommazahlen · 2★ verschiedene Längeneinheiten, Ergebniseinheit vorgegeben */
+const PAAR=[["m","cm",100,[1.2,1.5,2,0.8,2.5,1.6],[40,50,60,80,30,25],[30,40,50,60,80]],["cm","mm",10,[6,9,12,5,7],[25,45,15,55,65],[20,30,40,50,60]],
+  ["dm","cm",10,[3,4,5,6,1.5],[25,15,45,8,12],[20,30,40,50]],["m","dm",10,[1.2,2,1.5,3],[5,8,6,4,15],[4,5,6,8]]];
+function g11(lv){
+  const was=rnd(0,1)?"u":"A", quad=rnd(0,3)===0;
+  let a,b,ua,ub,T,aT,bT,o2,vor="";
+  if(lv<2){
+    T=lv===0?pick(["cm","cm","m","dm","mm"]):pick(["cm","m"]);
+    if(lv===0){a=rnd(3,12);b=quad?a:rnd(2,9);if(!quad&&b===a)b=a>3?a-1:a+2;}
+    else if(quad){a=pick([1.5,2.5,0.5,1.2,0.9,0.6,3.5]);b=a;}
+    else{a=pick([1.5,2.5,3.5,4.5,1.2,2.4,0.8,0.6,7.5,1.8]);b=rnd(0,2)?rnd(2,6):pick([0.5,1.5,2.5]);if(b===a)b=4;}
+    ua=ub=T;aT=a;bT=b;
+  }else{
+    const [g,k,f,G,K,Q]=pick(PAAR);
+    if(quad){a=pick(Q);b=a;ua=ub=k;T=g;o2=k;aT=bT=rund(a/f);vor=`${L(a,k)} = ${L(aT,g)}`;}
+    else{T=rnd(0,1)?g:k;o2=T===g?k:g;a=pick(G);ua=g;b=pick(K);ub=k;aT=T===g?a:rund(a*f);bT=T===g?rund(b/f):b;
+      vor=T===g?`${L(b,k)} = ${L(bT,g)}`:`${L(a,g)} = ${L(aT,k)}`;}
+  }
+  const u=quad?rund(4*aT):rund(2*(aT+bT)), A=rund(aT*bT), ziel=was==="u"?u:A, ze=was==="u"?T:QU(T);
+  const rU=quad?`u = 4 · ${L(aT,T)} = ${L(u,T)}`:`u = 2 · (${L(aT,T)} + ${L(bT,T)}) = 2 · ${L(rund(aT+bT),T)} = ${L(u,T)}`;
+  const rA=`A = ${L(aT,T)} · ${L(bT,T)} = ${L(A,QU(T))}`;
+  const roh=quad?(was==="u"?4*a:a*a):(was==="u"?2*(a+b):a*b);
+  const name=quad?"Quadrat":"Rechteck";
+  return{q:`${name}: Berechne den ${was==="u"?"Umfang u":"Flächeninhalt A"}${lv===2?` in ${ze}`:""}.`,
+    svg:rechteck({la:quad?"a = "+L(a,ua):L(a,ua),lb:L(b,ub),ra:aT,rb:bT,quad}),
+    felder:[{label:was+" =",ok:[[ziel,ze]],units:wahl(T,o2)}],kat:String(ziel),loes:`${was} = ${L(ziel,ze)}`,
+    tipp:x=>{const v=x[0];
+      if(was==="u"&&gleich(v,A)&&!gleich(A,u))return"Das ist der Flächeninhalt. Der Umfang ist die Länge des Randes – einmal ganz herum.";
+      if(was==="A"&&gleich(v,u)&&!gleich(A,u))return"Das ist der Umfang. Der Flächeninhalt gibt an, wie viele Einheitsquadrate hineinpassen.";
+      if(was==="u"&&!quad&&gleich(v,aT+bT))return"Das ist erst der halbe Umfang. Jede Seite kommt zweimal vor.";
+      if(was==="u"&&quad&&gleich(v,2*aT))return"Ein Quadrat hat vier gleich lange Seiten.";
+      if(lv===2&&gleich(v,roh)&&!gleich(roh,ziel))return"Erst gleiche Einheiten, dann rechnen!";
+      return"";},
+    ex:`${vor?"Erst gleiche Einheiten: "+vor+"<br>":""}${was==="u"?rU:rA}`};
+}
+
+/* 1-2 Flächeneinheiten umrechnen: 0★ benachbarte Einheiten, ganze Zahlen · 1★ über zwei Stufen, Kommazahlen · 2★ mit a, ha, km² und „sinnvolle Einheit“ */
+const FE=["mm²","cm²","dm²","m²","a","ha","km²"];
+const conv=(v,a,b)=>rund(v*Math.pow(100,FE.indexOf(a)-FE.indexOf(b)));
+function kette(v,a,b){const i=FE.indexOf(a),j=FE.indexOf(b),d=i<j?1:-1;let s=L(v,a);for(let k=i;k!==j;k+=d)s+=" = "+L(conv(v,a,FE[k+d]),FE[k+d]);return s;}
+function umr(v,a,b){
+  const r=conv(v,a,b),i=FE.indexOf(a),j=FE.indexOf(b),st=Math.abs(i-j),p=Math.pow(10,st);
+  return{q:"Rechne um.",felder:[{label:L(v,a)+" =",ok:[[r,b]],fest:b}],kat:String(r),loes:`${L(v,a)} = ${L(r,b)}`,
+    tipp:x=>{const y=x[0];
+      if((i>j&&gleich(y,rund(r/p)))||(i<j&&gleich(y,rund(r*p))))return"Bei Flächen ist die Umrechnungszahl 100: Das Komma wandert 2 Stellen pro Stufe (bei Längen nur 1 Stelle).";
+      if(gleich(y,conv(v,b,a)))return"Andersherum: In die kleinere Einheit wird die Zahl größer, in die größere Einheit kleiner.";
+      return"";},
+    ex:`${kette(v,a,b)}<br>${st} ${st===1?"Stufe":"Stufen"} auf der Einheiten-Treppe: Komma ${2*st} Stellen nach ${i>j?"rechts":"links"}.`};}
+const UMR2=[[6000,"m²","a"],[4,"ha","m²"],[0.5,"ha","a"],[250,"a","ha"],[2,"km²","ha"],[800,"m²","a"],[1.5,"ha","m²"],[40000,"m²","ha"],[7,"a","m²"],[350,"ha","km²"],[0.2,"km²","ha"],[12,"ha","a"]];
+const SINN=[
+ {t:"Ein Kinderzimmer ist 140 000 cm² groß.",v:140000,u:"cm²",ok:["m²"],w:"Zimmer und Wohnungen gibt man in m² an."},
+ {t:"Ein Balkon ist 60 000 cm² groß.",v:60000,u:"cm²",ok:["m²"],w:"Wohnflächen wie Balkone gibt man in m² an."},
+ {t:"Ein Kleingarten ist 30 000 dm² groß.",v:30000,u:"dm²",ok:["a","m²"],w:"Kleingärten gibt man in a an (auch m² ist üblich)."},
+ {t:"Ein Baugrundstück ist 72 000 dm² groß.",v:72000,u:"dm²",ok:["a","m²"],w:"Grundstücke gibt man in a an (auch m² ist üblich)."},
+ {t:"Ein Weizenfeld ist 60 000 m² groß.",v:60000,u:"m²",ok:["ha"],w:"Felder in der Landwirtschaft gibt man in ha an."},
+ {t:"Ein Waldstück im Forst ist 2 500 a groß.",v:2500,u:"a",ok:["ha"],w:"Wald gibt man in ha an."},
+ {t:"Eine Stadt ist 8 500 ha groß.",v:8500,u:"ha",ok:["km²"],w:"Städte gibt man in km² an."},
+ {t:"Ein Fußballplatz ist 7 000 m² groß.",v:7000,u:"m²",ok:["a","ha"],w:"Sportanlagen gibt man in a oder ha an."},
+ {t:"Ein Handy-Display ist 10 500 mm² groß.",v:10500,u:"mm²",ok:["cm²"],w:"Kleine Flächen wie ein Display gibt man in cm² an."},
+ {t:"Ein Landkreis ist 80 000 ha groß.",v:80000,u:"ha",ok:["km²"],w:"Landkreise und Länder gibt man in km² an."}];
+const UW=["mm²","cm²","m²","a","ha","km²"];
+function sinnvoll(){
+  const s=pick(SINN);
+  return{q:`${s.t} Gib den Flächeninhalt in einer sinnvollen Einheit an.`,felder:[{label:"A =",ok:s.ok.map(u=>[conv(s.v,s.u,u),u]),units:UW}],kat:s.t,
+    loes:s.ok.map(u=>L(conv(s.v,s.u,u),u)).join(" oder "),
+    tipp:(x,us)=>!s.ok.includes(us[0])&&gleich(x[0],conv(s.v,s.u,us[0]))?`Richtig umgerechnet – aber ist ${us[0]} hier sinnvoll? Denk an die Größen: 1 m² ≈ Tischplatte, 1 a ≈ großes Klassenzimmer, 1 ha ≈ Fußballfeld.`:"",
+    ex:`${s.ok.map(u=>kette(s.v,s.u,u)).join("<br>")}<br>${s.w}`};}
+const PASST=[["ein Kinderzimmer","m²"],["einen Kleingarten","a"],["ein Weizenfeld","ha"],["ein Waldstück im Forst","ha"],["einen Landkreis","km²"],
+  ["eine Briefmarke","cm²"],["eine Wohnung","m²"],["ein Tablet-Display","cm²"],["eine Stadt","km²"],["ein Baugrundstück","a"]];
+const MERK="Wohnungen und Zimmer in m² · a für Grundstücke und Kleingärten · ha für Felder, Wald und Parks · km² für Städte, Landkreise und Länder.";
+function passt(){
+  const [x,u]=pick(PASST), weg=u==="a"?["m²"]:[];
+  return Object.assign(mc(`Welche Einheit passt am besten für ${x}?`,"",u,shuffle(["cm²","m²","a","ha","km²"].filter(y=>y!==u&&!weg.includes(y))),`Für ${x} nimmt man ${u}.<br>${MERK}`),{kat:u});}
+function g12(lv){
+  if(lv===0){const i=rnd(1,3),n=rnd(2,99);return rnd(0,1)?umr(n,FE[i],FE[i-1]):umr(n*100,FE[i-1],FE[i]);}
+  if(lv===1){
+    if(rnd(0,1)){const i=rnd(1,3),d=pick([4.5,0.5,2.5,1.2,0.8,3.75,0.25,6.4]);return rnd(0,1)?umr(d,FE[i],FE[i-1]):umr(rund(d*100),FE[i-1],FE[i]);}
+    const i=rnd(2,3),d=pick([3,5,0.5,1.5,2,0.25,7,1.2]);return rnd(0,1)?umr(d,FE[i],FE[i-2]):umr(rund(d*10000),FE[i-2],FE[i]);}
+  const t=rnd(0,9);
+  if(t<4){const [v,a,b]=pick(UMR2);return umr(v,a,b);}
+  if(t<8)return sinnvoll();
+  return passt();
+}
+
+/* 1-3 Fehlende Seite (durch Überlegen, ohne Umstellen): 0★ aus A · 1★ aus u (halber Umfang) und Quadrat · 2★ gemischt, verschiedene Einheiten */
+const seiteFeld=(lab,n,T,o2)=>({label:lab+" =",ok:[[n,T]],units:wahl(T,o2)});
+function ausA(A,g,res,T,o){ /* A und eine Seite gegeben, andere Seite gesucht */
+  o=o||{};const gs=o.gs||"a",ges=gs==="a"?"b":"a",Au=o.Au||QU(T),Ad=o.Ad!=null?o.Ad:A;
+  return{q:o.q||`Rechteck: A = ${L(Ad,Au)}, ${gs} = ${L(g,T)}. Berechne die fehlende Seite ${ges}.`,
+    svg:rechteck(gs==="a"?{la:L(g,T),lb:"b = ?",ra:g,rb:res,mitte:"A = "+L(Ad,Au)}:{la:"a = ?",lb:L(g,T),ra:res,rb:g,mitte:"A = "+L(Ad,Au)}),
+    felder:[seiteFeld(ges,res,T,o.o2)],kat:String(res),loes:`${ges} = ${L(res,T)}`,
+    tipp:x=>{const v=x[0];
+      if(o.tipp){const t=o.tipp(v);if(t)return t;}
+      if(gleich(v,A-g))return`Beim Flächeninhalt wird multipliziert: ${L(g,T)} · ? = ${L(A,QU(T))}.`;
+      if(gleich(v,A*g))return`Gesucht ist die Zahl, mit der du ${L(g,T)} multiplizieren musst, um ${L(A,QU(T))} zu erhalten. Dividiere.`;
+      return"";},
+    ex:`${o.vor||""}${L(g,T)} · ? = ${L(A,QU(T))}<br>${ges} = ${L(A,QU(T))} : ${L(g,T)} = ${L(res,T)}`};}
+function ausU(u,a,b,T,o){ /* u und a gegeben, b gesucht – halber Umfang minus bekannte Seite */
+  o=o||{};const ud=o.ud||L(u,T);
+  return{q:o.q||`Rechteck: u = ${ud}, a = ${L(a,T)}. Berechne die fehlende Seite b.`,
+    svg:rechteck({la:L(a,T),lb:"b = ?",ra:a,rb:b,mitte:"u = "+ud}),felder:[seiteFeld("b",b,T,o.o2)],kat:String(b),loes:`b = ${L(b,T)}`,
+    tipp:x=>{const v=x[0];
+      if(gleich(v,u-a))return"Nimm zuerst den halben Umfang (u : 2). Das ist a + b.";
+      if(gleich(v,u/2))return"Das ist a + b. Ziehe noch die bekannte Seite a ab.";
+      if(gleich(v,u-2*a))return"Das ist b + b. Dividiere noch durch 2.";
+      if(o.tipp)return o.tipp(v);return"";},
+    ex:`${o.vor||""}halber Umfang: ${L(u,T)} : 2 = ${L(u/2,T)} (das ist a + b)<br>b = ${L(u/2,T)} − ${L(a,T)} = ${L(b,T)}`};}
+function quadU(u,a,T,o){
+  o=o||{};const ud=o.ud||L(u,T);
+  return{q:o.q||`Quadrat: u = ${ud}. Berechne die Seitenlänge a.`,svg:rechteck({la:"a = ?",quad:true,mitte:"u = "+ud}),
+    felder:[seiteFeld("a",a,T,o.o2)],kat:String(a),loes:`a = ${L(a,T)}`,
+    tipp:x=>gleich(x[0],u/2)?"Ein Quadrat hat vier gleich lange Seiten: Dividiere durch 4.":o.tipp?o.tipp(x[0]):"",
+    ex:`${o.vor||""}Ein Quadrat hat vier gleich lange Seiten.<br>a = ${L(u,T)} : 4 = ${L(a,T)}`};}
+function quadA(A,a,T){
+  return{q:`Quadrat: A = ${L(A,QU(T))}. Berechne die Seitenlänge a.`,svg:rechteck({la:"a = ?",quad:true,mitte:"A = "+L(A,QU(T))}),
+    felder:[seiteFeld("a",a,T)],kat:String(a),loes:`a = ${L(a,T)}`,
+    tipp:x=>gleich(x[0],A/2)||gleich(x[0],A/4)?`Gesucht ist die Zahl, die mit sich selbst multipliziert ${fz(A)} ergibt.`:"",
+    ex:`? · ? = ${L(A,QU(T))}<br>${L(a,T)} · ${L(a,T)} = ${L(A,QU(T))} → a = ${L(a,T)}`};}
+function g13(lv){
+  const T=pick(["cm","m"]);
+  if(lv===0){let a=rnd(2,10),b=rnd(2,10);while(b===a)b=rnd(2,10);return ausA(a*b,a,b,T);}
+  if(lv===1){const t=rnd(0,4);
+    if(t<3){let a=rnd(3,12),b=rnd(2,9);while(b===a)b=rnd(2,9);return ausU(2*(a+b),a,b,T);}
+    if(t===3){const a=rnd(3,15);return quadU(4*a,a,T);}
+    const a=rnd(2,10);return quadA(a*a,a,T);}
+  const t=rnd(0,3);
+  if(t===0){const d=pick([2.5,1.5,0.5,1.2,3.5]);let n=rnd(2,8);const A=rund(d*n),decGes=rnd(0,1);
+    return decGes?ausA(A,n,d,T,{gs:rnd(0,1)?"a":"b"}):ausA(A,d,n,T,{gs:rnd(0,1)?"a":"b"});}
+  if(t===1){let a,b;do{a=pick([40,60,80,30,70]);b=pick([20,50,90,110,40]);}while(a===b);
+    const uc=2*(a+b),um=rund(uc/100);
+    return ausU(uc,a,b,"cm",{ud:L(um,"m"),o2:"m",q:`Rechteck: u = ${L(um,"m")}, a = ${L(a,"cm")}. Berechne die fehlende Seite b in cm.`,
+      vor:`Erst gleiche Einheiten: ${L(um,"m")} = ${L(uc,"cm")}<br>`,tipp:v=>v<0||gleich(v,rund(um/2-a))?"Erst gleiche Einheiten, dann rechnen!":""});}
+  if(t===2){const [a,b]=pick([[50,200],[40,150],[25,80],[20,150],[50,120],[40,200],[25,160],[50,60]]);const Ac=a*b,Am=rund(Ac/10000);
+    return ausA(Ac,a,b,"cm",{Au:"m²",Ad:Am,o2:"m",q:`Rechteck: A = ${L(Am,"m²")}, a = ${L(a,"cm")}. Berechne die fehlende Seite b in cm.`,
+      vor:`Erst gleiche Einheiten: ${L(Am,"m²")} = ${L(Ac,"cm²")} (1 m² = 10${NB}000 cm²)<br>`,
+      tipp:v=>gleich(v,rund(Am*100/a))?"1 m² = 10 000 cm² (zwei Stufen, Komma 4 Stellen).":gleich(v,rund(Am/a))?"Erst gleiche Einheiten, dann rechnen!":""});}
+  const a=pick([25,30,40,45,60,75]),uc=4*a,um=rund(uc/100);
+  return quadU(uc,a,"cm",{ud:L(um,"m"),o2:"m",q:`Quadrat: u = ${L(um,"m")}. Berechne die Seitenlänge a in cm.`,
+    vor:`Erst gleiche Einheiten: ${L(um,"m")} = ${L(uc,"cm")}<br>`,tipp:v=>gleich(v,rund(um/4))?"Erst gleiche Einheiten: Rechne u in cm um.":""});
+}
+
+/* 1-4 Sachaufgaben aus dem Online-Shop (Runde = 5): Maße ablesen, überflüssige Angaben überlesen
+   0★ gleiche Einheit, nur der Preis als überflüssige Angabe · 1★ Kommazahlen, mehrere überflüssige Angaben · 2★ verschiedene Einheiten, Ergebniseinheit vorgegeben */
+const PROD=[
+ {n:"Rechteck-Trampolin „Jump XL“",p:"349,99 €",fA:"Wie groß ist die Sprungfläche?",fU:"Wie lang ist die Polsterkante, die einmal ganz um die Sprungfläche läuft?",
+  d:[[[3,"m",2,"m"],[4,"m",3,"m"]],[[3.5,"m",2,"m"],[4.5,"m",3,"m"]],[[3,"m",180,"cm","m"],[250,"cm",2,"m","m"]]],
+  x:["Höhe: 85 cm","Belastbar bis 120 kg","Gewicht: 48 kg","Lieferzeit: 3–5 Werktage","Farbe: Türkis"]},
+ {n:"Pinnwand „Kork“",p:"24,99 €",fA:"Wie groß ist die Korkfläche?",fU:"Wie lang ist die Holzleiste, die einmal ganz herum als Rahmen läuft?",
+  d:[[[80,"cm",50,"cm"],[90,"cm",60,"cm"]],[[32.5,"cm",20,"cm"],[42.5,"cm",30,"cm"]],[[1,"m",60,"cm","cm"],[90,"cm",0.6,"m","m"]]],
+  x:["Dicke: 2 cm","Mit 20 Pinnnadeln","Gewicht: 1,8 kg","Lieferzeit: 2 Werktage","Rahmen aus Kiefernholz"]},
+ {n:"Fensterfolie „Sichtschutz“",p:"12,95 €",fA:"Wie groß ist die Fläche der Folie?",fU:"Die Folie bekommt einmal ganz herum einen Klebestreifen. Wie lang ist er?",
+  d:[[[5,"m",1,"m"],[4,"m",2,"m"]],[[2.5,"m",0.8,"m"],[1.5,"m",1.2,"m"]],[[75,"cm",2,"m","m"],[120,"cm",1.5,"m","m"]]],
+  x:["Dicke: 0,1 mm","Lässt 70 % des Lichts durch","Lieferzeit: 1–2 Werktage","Selbstklebend","Gewicht: 400 g"]},
+ {n:"Strandtuch „Wave“",p:"19,99 €",fA:"Wie groß ist das Strandtuch?",fU:"Rundherum ist eine Borte mit Fransen genäht. Wie lang ist die Borte?",
+  d:[[[180,"cm",100,"cm"],[160,"cm",90,"cm"]],[[1.8,"m",1,"m"],[1.6,"m",0.9,"m"]],[[180,"cm",1,"m","m"],[1.5,"m",80,"cm","cm"]]],
+  x:["Gewicht: 650 g","Material: 100 % Baumwolle","Waschbar bei 40 °C","Lieferzeit: 2–4 Werktage","Farbe: Blau-Türkis"]},
+ {n:"Balkon-Kunstrasen „Green“",p:"59,90 €",fA:"Wie groß ist die Rasenfläche?",fU:"Wie lang ist die Randleiste, die einmal ganz herum verlegt wird?",
+  d:[[[5,"m",2,"m"],[6,"m",3,"m"]],[[4,"m",1.5,"m"],[3.5,"m",2,"m"]],[[4,"m",150,"cm","m"],[250,"cm",2,"m","m"]]],
+  x:["Florhöhe: 2 cm","Wasserdurchlässig","Gewicht: 9 kg","Lieferzeit: 5 Werktage","UV-beständig"]},
+ {n:"Whiteboard „Magnet“",p:"89,00 €",fA:"Wie groß ist die Schreibfläche?",fU:"Wie lang ist der Alu-Rahmen einmal ganz herum?",
+  d:[[[120,"cm",90,"cm"],[100,"cm",60,"cm"]],[[1.2,"m",0.9,"m"],[1.5,"m",1,"m"]],[[120,"cm",0.9,"m","m"],[1.5,"m",100,"cm","cm"]]],
+  x:["Mit 6 Magneten","Gewicht: 7,5 kg","Inklusive 3 Stiften","Lieferzeit: 2 Werktage","Dicke: 1,5 cm"]},
+ {n:"Tablet-Schutzfolie „Clear“",p:"9,99 €",fA:"Wie groß ist die Folie?",fU:"Wie lang ist der Rand der Folie einmal ganz herum?",
+  d:[[[25,"cm",17,"cm"],[20,"cm",14,"cm"]],[[22.5,"cm",16,"cm"],[24,"cm",17.5,"cm"]],[[250,"mm",17,"cm","cm"],[24,"cm",160,"mm","cm"]]],
+  x:["Dicke: 0,3 mm","2 Folien im Set","Lieferzeit: 1 Werktag","Härtegrad: 9H","Gewicht: 30 g"]},
+ {n:"Hundebett „Kuschel“",p:"44,90 €",fA:"Wie groß ist die Liegefläche?",fU:"Rundherum ist ein Stoffrand. Wie lang ist er?",
+  d:[[[80,"cm",60,"cm"],[100,"cm",70,"cm"]],[[0.8,"m",0.6,"m"],[1.2,"m",0.8,"m"]],[[80,"cm",0.6,"m","m"],[1.2,"m",70,"cm","cm"]]],
+  x:["Höhe: 20 cm","Bezug waschbar bei 30 °C","Für Hunde bis 25 kg","Gewicht: 2,4 kg","Lieferzeit: 3 Werktage"]},
+ {n:"Fototapete „Skyline bei Nacht“",p:"79,00 €",fA:"Wie groß ist die Fototapete?",fU:"Um die Tapete soll einmal ganz herum eine LED-Leiste. Wie lang muss sie sein?",
+  d:[[[4,"m",3,"m"],[5,"m",3,"m"]],[[3.5,"m",2.5,"m"],[2.5,"m",2,"m"]],[[350,"cm",2.5,"m","m"],[3,"m",250,"cm","m"]]],
+  x:["8 Bahnen","Gewicht: 1,9 kg","Inklusive Kleister","Lieferzeit: 4 Werktage","Für Wände bis 3 m Höhe"]},
+ {n:"Yogamatte „Flow“",p:"24,99 €",fA:"Wie viel Platz braucht die Matte auf dem Boden?",fU:"Wie lang ist die Kante der Matte einmal ganz herum?",
+  d:[[[180,"cm",60,"cm"],[170,"cm",60,"cm"]],[[1.8,"m",0.6,"m"],[1.7,"m",0.6,"m"]],[[1.8,"m",60,"cm","cm"],[180,"cm",0.6,"m","m"]]],
+  x:["Dicke: 6 mm","Gewicht: 1,2 kg","Rutschfest","Lieferzeit: 2 Werktage","Mit Tragegurt"]}];
+function shop(P,lv,a,ua,b,ub){
+  const masse=lv<2?[`Maße: ${L(a,ua)} × ${L(b,ub)}`]:[`Länge: ${L(a,ua)}`,`Breite: ${L(b,ub)}`];
+  const extra=shuffle(P.x).slice(0,lv===0?0:lv===1?2:3);
+  const liste=lv<2?[...masse,...extra]:shuffle([...masse,...extra]);
+  return `<div class="shop"><div class="tagS">ONLINE-SHOP · PRODUKTBESCHREIBUNG</div><h3>${P.n}</h3><div class="preis">${P.p}</div><ul>${liste.map(t=>`<li>${t}</li>`).join("")}</ul><span class="korb">In den Warenkorb</span></div>`;}
+function g14(lv){
+  const P=pick(PROD),[a,ua,b,ub,T0]=pick(P.d[lv]),T=T0||ua;
+  const aT=convL(a,ua,T),bT=convL(b,ub,T),o2=[ua,ub].find(u=>u!==T);
+  const u=rund(2*(aT+bT)),A=rund(aT*bT),aFirst=rnd(0,1)===1;
+  const vor=[[a,ua,aT],[b,ub,bT]].filter(z=>z[1]!==T).map(z=>`${L(z[0],z[1])} = ${L(z[2],T)}`);
+  const fA={label:(aFirst?"a)":"b)")+" A =",ok:[[A,QU(T)]],units:wahl(T,o2)}, fU={label:(aFirst?"b)":"a)")+" u =",ok:[[u,T]],units:wahl(T,o2)};
+  const felder=aFirst?[fA,fU]:[fU,fA], iA=aFirst?0:1, iU=1-iA;
+  const fragen=aFirst?[P.fA,P.fU]:[P.fU,P.fA];
+  return{q:`Lies die Maße aus der Produktbeschreibung ab.${lv===2?` Gib A in ${QU(T)} und u in ${T} an.`:""}<br>a) ${fragen[0]}<br>b) ${fragen[1]}`,
+    svg:shop(P,lv,a,ua,b,ub),felder,kat:P.n,loes:`A = ${L(A,QU(T))}, u = ${L(u,T)}`,
+    tipp:x=>{const vA=x[iA],vU=x[iU];
+      if(gleich(vA,u)||gleich(vU,A))return"Hast du Umfang und Flächeninhalt vertauscht? Der Umfang ist der Rand, der Flächeninhalt die Fläche.";
+      if(gleich(vU,aT+bT))return"Beim Umfang ist das erst der halbe Rand. Jede Seite kommt zweimal vor.";
+      if(lv===2&&(gleich(vA,a*b)||gleich(vU,2*(a+b))))return"Erst gleiche Einheiten, dann rechnen!";
+      return"";},
+    ex:`${vor.length?"Erst gleiche Einheiten: "+vor.join(" · ")+"<br>":""}A = ${L(aT,T)} · ${L(bT,T)} = ${L(A,QU(T))}<br>u = 2 · (${L(aT,T)} + ${L(bT,T)}) = 2 · ${L(rund(aT+bT),T)} = ${L(u,T)}<br>Alle anderen Angaben (Preis${lv?", Gewicht, Lieferzeit …":""}) braucht man nicht.`};
+}
+
+/* ================= Level 2 · Das Parallelogramm ================= */
+/* Zeichnungen nach der Arbeitsblattvorlage: Ecken A, B, C, D gegen den Uhrzeigersinn (A links unten), rechter Winkel mit Bogen und Punkt,
+   gleich lange Seiten mit Strichen. Gerechnet wird in „Mathe-Koordinaten“ (y nach oben); erst beim Zeichnen wird in Bildschirmkoordinaten umgerechnet. */
+const vsub=(p,q)=>[p[0]-q[0],p[1]-q[1]], vadd=(p,q)=>[p[0]+q[0],p[1]+q[1]], vmul=(p,k)=>[p[0]*k,p[1]*k];
+const vlen=p=>Math.hypot(p[0],p[1]), vnorm=p=>{const l=vlen(p)||1;return[p[0]/l,p[1]/l];};
+const vrot=(p,w)=>{const c=Math.cos(w),s=Math.sin(w);return[p[0]*c-p[1]*s,p[0]*s+p[1]*c];};
+const sp2=p=>p[0].toFixed(1)+" "+p[1].toFixed(1);
+function szene(W,H,pts,zeichne){
+  const xs=pts.map(p=>p[0]), ys=pts.map(p=>p[1]), minx=Math.min(...xs), maxx=Math.max(...xs), miny=Math.min(...ys), maxy=Math.max(...ys);
+  const mx=12, my=46, k=Math.min(1,(W-2*mx)/Math.max(1,maxx-minx),(H-2*my)/Math.max(1,maxy-miny)), cx=(minx+maxx)/2, cy=(miny+maxy)/2;
+  const T=p=>[W/2+(p[0]-cx)*k,H/2-(p[1]-cy)*k];
+  return `<svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Zeichnung">`+zeichne(T)+`</svg>`;}
+const sLine=(a,b,st,w,dash)=>`<line x1="${a[0].toFixed(1)}" y1="${a[1].toFixed(1)}" x2="${b[0].toFixed(1)}" y2="${b[1].toFixed(1)}" stroke="${st||"#111"}" stroke-width="${w||3}"${dash?` stroke-dasharray="${dash}"`:""} stroke-linecap="round"/>`;
+/* Text neben einem Bildschirmpunkt p; dir = Richtung in Mathe-Koordinaten, d = Abstand in Pixeln */
+function sText(p,dir,d,t,o){
+  o=o||{};const q=[p[0]+dir[0]*d,p[1]-dir[1]*d], an=o.anchor||(dir[0]>.35?"start":dir[0]<-.35?"end":"middle");
+  return `<text x="${q[0].toFixed(1)}" y="${q[1].toFixed(1)}" dy=".35em" text-anchor="${an}" font-size="${o.size||21}" font-weight="700" fill="${o.fill||"#111"}"${o.halo?` stroke="${o.halo}" stroke-width="5" paint-order="stroke"`:""}>${t}</text>`;}
+/* rechter Winkel: Kreisbogen mit Punkt; v Bildschirmpunkt, u1 und u2 Bildschirm-Richtungen der beiden Schenkel */
+function sRw(v,u1,u2,r){
+  r=r||15;const a1=Math.atan2(u1[1],u1[0]), a2=Math.atan2(u2[1],u2[0]);let d=a2-a1;while(d>Math.PI)d-=2*Math.PI;while(d<=-Math.PI)d+=2*Math.PI;
+  const sw=d>0?1:0, p1=[v[0]+u1[0]*r,v[1]+u1[1]*r], p2=[v[0]+u2[0]*r,v[1]+u2[1]*r], c=[v[0]+(u1[0]+u2[0])*r*.42,v[1]+(u1[1]+u2[1])*r*.42];
+  return `<path d="M${sp2(p1)}A${r} ${r} 0 0 ${sw} ${sp2(p2)}" fill="none" stroke="#111" stroke-width="2"/><circle cx="${c[0].toFixed(1)}" cy="${c[1].toFixed(1)}" r="2.4" fill="#111"/>`;}
+/* gleich lange Seiten: n Striche quer über die Mitte der Seite a-b (Bildschirmpunkte) */
+function sTicks(a,b,n){
+  const mid=[(a[0]+b[0])/2,(a[1]+b[1])/2], d=vnorm(vsub(b,a)), nr=[-d[1],d[0]];let s="";
+  for(let i=0;i<n;i++){const o=(i-(n-1)/2)*7, c=[mid[0]+d[0]*o,mid[1]+d[1]*o];
+    s+=sLine([c[0]-nr[0]*8,c[1]-nr[1]*8],[c[0]+nr[0]*8,c[1]+nr[1]*8],"#111",2.5);}
+  return s;}
+const sv=u=>[u[0],-u[1]];
+
+/* Parallelogramm ABCD (A links unten, gegen den Uhrzeigersinn). W Grundseite, h Höhe, s Versatz von D gegenüber A (in Pixeln, rechnerisch), rot = Drehung.
+   Optionen: gl/hl/sl Beschriftungen · mitte Text im Parallelogramm · hoehe (Höhe von D samt rechtem Winkel) · grund (Grundseite AB fett)
+   · V "C" oder "D", Fx: Strecken V-E (Lot) und V-F zum Auswählen */
+function zeichnePara(o){
+  const W=o.W, h=o.h, s=o.s, w=o.rot||0, R=p=>vrot(p,w), H=o.H||250;
+  const P={A:R([0,0]),B:R([W,0]),C:R([W+s,h]),D:R([s,h])}, poly=[P.A,P.B,P.C,P.D];
+  const cen=vmul(vadd(vadd(P.A,P.B),vadd(P.C,P.D)),.25), b=vnorm(vsub(P.B,P.A)), nUp=[-b[1],b[0]];
+  const pts=poly.slice(), hasV=!!o.V, Ex=o.V==="C"?W+s:s, E=hasV?R([Ex,0]):null, F=o.Fx!=null?R([o.Fx,0]):null, V=hasV?R(o.V==="C"?[W+s,h]:[s,h]):null;
+  const xs=[0,W,Ex,o.Fx].filter(x=>x!=null), x0=Math.min(...xs), x1=Math.max(...xs);
+  const extL=hasV&&x0<-.5?[R([x0,0]),P.A]:null, extR=hasV&&x1>W+.5?[P.B,R([x1,0])]:null;
+  [E,F,extL&&extL[0],extR&&extR[1]].forEach(p=>{if(p)pts.push(p);});
+  const links=hasV&&Ex<0;                                   /* Fußpunkt links außerhalb: Beschriftung der Höhe links */
+  if(o.hl&&links)pts.push(R([Ex-92,h/2]));
+  if(o.sl)pts.push(R([W+s/2+70,h/2]));
+  return szene(460,H,pts,T=>{
+    const a=T(P.A), bb=T(P.B), c=T(P.C), d=T(P.D); let g="";
+    g+=`<polygon points="${[a,bb,c,d].map(sp2).join(" ")}" fill="#e6f7f4" stroke="#111" stroke-width="3" stroke-linejoin="round"/>`;
+    if(extL)g+=sLine(T(extL[0]),T(extL[1]),"#111",1.8,"6 5");
+    if(extR)g+=sLine(T(extR[0]),T(extR[1]),"#111",1.8,"6 5");
+    if(o.grund)g+=sLine(a,bb,"#0d5f57",6);
+    if(o.hoehe&&hasV){
+      g+=sLine(T(V),T(E),"#111",2.5,"7 5");
+      const sg=(W/2-Ex)>=0?1:-1, dirB=sv(b), u2=sg>0?dirB:[-dirB[0],-dirB[1]], up=vnorm(vsub(T(V),T(E)));
+      g+=sRw(T(E),up,u2);
+    }
+    if(o.cand){g+=sLine(T(V),T(E),"#111",3)+sLine(T(V),T(F),"#111",3)+`<circle cx="${T(E)[0].toFixed(1)}" cy="${T(E)[1].toFixed(1)}" r="3.6" fill="#111"/><circle cx="${T(F)[0].toFixed(1)}" cy="${T(F)[1].toFixed(1)}" r="3.6" fill="#111"/>`;}
+    /* Ecken */
+    for(const n of ["A","B","C","D"]){const dir=vnorm(vsub(P[n],cen));g+=sText(T(P[n]),dir,19,n,{size:20});}
+    if(o.cand){const out=[-nUp[0],-nUp[1]];g+=sText(T(E),out,19,o.nE||"E",{size:20})+sText(T(F),out,19,o.nF||"F",{size:20});}
+    zeichnePara.last={A:T(P.A),B:T(P.B),C:T(P.C),D:T(P.D),V:hasV?T(V):null,E:hasV?T(E):null,F:F?T(F):null};
+    /* Maße */
+    if(o.gl){const mid=vmul(vadd(P.A,P.B),.5);g+=sText(T(mid),[-nUp[0],-nUp[1]],28,o.gl);}
+    if(o.sl){const mid=vmul(vadd(P.B,P.C),.5), dir=vnorm(vsub(mid,cen));g+=sText(T(mid),dir,16,o.sl);}
+    if(o.hl&&hasV){const mid=vmul(vadd(V,E),.5);g+=links?sText(T(mid),[-b[0],-b[1]],10,o.hl,{anchor:"end"}):sText(T(R([Ex,h*.32])),b,10,o.hl,{anchor:"start",halo:"#e6f7f4"});}
+    if(o.mitte){g+=links?sText(T(R([W/2+s/2,h*.5])),[0,0],0,o.mitte,{anchor:"middle",size:19,fill:"#0d5f57",halo:"#e6f7f4"}):sText(T(R([Ex,h*.72])),b,10,o.mitte,{anchor:"start",size:19,fill:"#0d5f57",halo:"#e6f7f4"});}
+    return g;});
+}
+
+/* Vierecke zum Erkennen (0★): 14 Varianten (7 ja, 7 nein), zufällig gedreht; jede Variante höchstens einmal pro Runde.
+   Markierungen wie in der Arbeitsblattvorlage: rechter Winkel mit Bogen und Punkt, gleich lange Seiten mit Strichen */
+const VIERECKE=[
+  {n:"Parallelogramm",ja:true,ex:"Gegenüberliegende Seiten sind parallel (zwei Paare). Das ist ein Parallelogramm.",
+    gen:()=>{const w=rnd(130,160),h=rnd(70,88),s=rnd(40,56);return{p:[[0,0],[w,0],[w+s,h],[s,h]]};}},
+  {n:"Parallelogramm (nach links geneigt)",ja:true,ex:"Gegenüberliegende Seiten sind parallel (zwei Paare). Das ist ein Parallelogramm.",
+    gen:()=>{const w=rnd(130,160),h=rnd(70,88),s=-rnd(40,56);return{p:[[0,0],[w,0],[w+s,h],[s,h]]};}},
+  {n:"Parallelogramm (lang und flach)",ja:true,ex:"Auch lang und flach: Gegenüberliegende Seiten sind parallel. Das ist ein Parallelogramm.",
+    gen:()=>{const w=rnd(180,200),h=rnd(46,58),s=rnd(60,80)*pick([1,-1]);return{p:[[0,0],[w,0],[w+s,h],[s,h]],t1:[0,2],t2:[1,3]};}},
+  {n:"Rechteck",ja:true,ex:"Ein Rechteck hat zwei Paare paralleler Seiten. Es ist ein besonderes Parallelogramm.",
+    gen:()=>{const w=rnd(150,175),h=rnd(74,92);return{p:[[0,0],[w,0],[w,h],[0,h]],rw:[0,1,2,3]};}},
+  {n:"Quadrat",ja:true,ex:"Ein Quadrat hat zwei Paare paralleler Seiten. Es ist Rechteck, Raute und Parallelogramm zugleich.",
+    gen:()=>{const a=rnd(100,115);return{p:[[0,0],[a,0],[a,a],[0,a]],rw:[0,1,2,3],t2:[0,1,2,3]};}},
+  {n:"Raute",ja:true,ex:"Eine Raute hat vier gleich lange Seiten und zwei Paare paralleler Seiten. Sie ist ein besonderes Parallelogramm.",
+    gen:()=>{const a=rnd(100,115),f=rnd(58,72)*Math.PI/180;return{p:[[0,0],[a,0],[a+a*Math.cos(f),a*Math.sin(f)],[a*Math.cos(f),a*Math.sin(f)]],t2:[0,1,2,3]};}},
+  {n:"Raute (spitz)",ja:true,ex:"Eine Raute hat vier gleich lange Seiten und zwei Paare paralleler Seiten. Sie ist ein besonderes Parallelogramm.",
+    gen:()=>{const a=rnd(105,118),f=rnd(32,42)*Math.PI/180;return{p:[[0,0],[a,0],[a+a*Math.cos(f),a*Math.sin(f)],[a*Math.cos(f),a*Math.sin(f)]],t1:[0,1,2,3]};}},
+  {n:"Trapez",ja:false,ex:"Ein Trapez hat nur ein Paar paralleler Seiten. Ein Parallelogramm braucht zwei Paare.",
+    gen:()=>{const w=rnd(160,180),t=rnd(70,95),o=rnd(20,40),h=rnd(78,92);return{p:[[0,0],[w,0],[o+t,h],[o,h]]};}},
+  {n:"Gleichschenkliges Trapez",ja:false,ex:"Zwei Seiten sind gleich lang, aber nur ein Paar Seiten ist parallel. Das ist ein Trapez, kein Parallelogramm.",
+    gen:()=>{const w=rnd(170,190),t=rnd(80,100),h=rnd(76,90),o=(w-t)/2;return{p:[[0,0],[w,0],[o+t,h],[o,h]],t1:[1,3]};}},
+  {n:"Rechtwinkliges Trapez",ja:false,ex:"Auch mit zwei rechten Winkeln hat dieses Trapez nur ein Paar paralleler Seiten. Es ist kein Parallelogramm.",
+    gen:()=>{const w=rnd(160,180),t=rnd(75,100),h=rnd(78,92);return{p:[[0,0],[w,0],[t,h],[0,h]],rw:[0,3]};}},
+  {n:"Drachen",ja:false,ex:"Beim Drachenviereck sind keine Seiten parallel. Es ist kein Parallelogramm.",
+    gen:()=>{const a=rnd(50,60),b=rnd(36,46),c=rnd(112,128);return{p:[[0,0],[a,b],[0,c],[-a,b]],t1:[0,3],t2:[1,2]};}},
+  {n:"Viereck",ja:false,ex:"In diesem Viereck sind keine zwei Seiten parallel. Es ist kein Parallelogramm.",
+    gen:()=>{const j=()=>rnd(-4,4);return{p:[[j(),j()],[150+j(),6+j()],[112+j(),95+j()],[20+j(),60+j()]]};}},
+  {n:"Viereck (fast ein Parallelogramm)",ja:false,ex:"Sieht fast aus wie ein Parallelogramm – aber die oberen und unteren Seiten sind nicht parallel. Es ist kein Parallelogramm.",
+    gen:()=>{const w=rnd(150,165),h=rnd(78,90),s=rnd(40,50);return{p:[[0,0],[w,0],[w+s-24,h],[s,h+14]]};}},
+  {n:"Viereck mit rechtem Winkel",ja:false,ex:"Ein rechter Winkel allein macht noch kein Parallelogramm: Hier sind keine Seiten parallel.",
+    gen:()=>{const w=rnd(140,160),h=rnd(90,104);return{p:[[0,0],[w,0],[w-30,h*.65],[0,h]],rw:[0]};}}];
+function zeichneViereck(pts,m){
+  const H=250;
+  return szene(460,H,pts,T=>{
+    const q=pts.map(T);let g=`<polygon points="${q.map(sp2).join(" ")}" fill="#e6f7f4" stroke="#111" stroke-width="3" stroke-linejoin="round"/>`;
+    (m.rw||[]).forEach(i=>{const v=q[i],pr=q[(i+3)%4],nx=q[(i+1)%4];g+=sRw(v,vnorm(vsub(pr,v)),vnorm(vsub(nx,v)));});
+    (m.t1||[]).forEach(i=>{g+=sTicks(q[i],q[(i+1)%4],1);});
+    (m.t2||[]).forEach(i=>{g+=sTicks(q[i],q[(i+1)%4],2);});
+    return g;});}
+function figurAufg(){
+  const k=rnd(0,VIERECKE.length-1), V=VIERECKE[k], f=V.gen(), w=rnd(0,359)*Math.PI/180;
+  const pts=f.p.map(p=>vrot(p,w));
+  return{q:"Ist diese Figur ein Parallelogramm?",svg:zeichneViereck(pts,f),opts:["Ja","Nein"],ans:V.ja?0:1,kat:V.ja?"Ja":"Nein",key:"fig"+k,ex:V.ex,pts};}
+
+/* wahr oder falsch (beide Richtungen) mit Begründung */
+const AUSSAGEN=[
+ ["Jedes Quadrat ist ein Parallelogramm.",true,"Ein Quadrat hat zwei Paare paralleler Seiten."],
+ ["Jedes Parallelogramm ist ein Quadrat.",false,"Ein Parallelogramm hat nicht immer rechte Winkel und gleich lange Seiten. Gegenbeispiel: ein schiefes Parallelogramm."],
+ ["Jedes Rechteck ist ein Parallelogramm.",true,"Ein Rechteck hat zwei Paare paralleler Seiten."],
+ ["Jedes Parallelogramm ist ein Rechteck.",false,"Ein schiefes Parallelogramm hat keine rechten Winkel."],
+ ["Jede Raute ist ein Parallelogramm.",true,"Gegenüberliegende Seiten einer Raute sind parallel."],
+ ["Jedes Parallelogramm ist eine Raute.",false,"Die Seiten eines Parallelogramms sind nicht immer alle gleich lang."],
+ ["Ein Parallelogramm hat vier gleich lange Seiten.",false,"Nur bei der Raute (und beim Quadrat) sind alle vier Seiten gleich lang."],
+ ["Manche Parallelogramme sind Rechtecke.",true,"Hat ein Parallelogramm vier rechte Winkel, ist es ein Rechteck."],
+ ["Manche Parallelogramme sind Rauten.",true,"Hat ein Parallelogramm vier gleich lange Seiten, ist es eine Raute."],
+ ["Gegenüberliegende Seiten eines Parallelogramms sind parallel.",true,"Das ist die Erkennungs-Eigenschaft: zwei Paare paralleler Seiten."],
+ ["Gegenüberliegende Seiten eines Parallelogramms sind gleich lang.",true,"Parallelogramme haben zwei Paare gleich langer Seiten (gegenüber)."],
+ ["Jedes Trapez ist ein Parallelogramm.",false,"Ein Trapez hat nur ein Paar paralleler Seiten."],
+ ["Jedes Viereck ist ein Parallelogramm.",false,"Ein Viereck kann auch ganz ohne parallele Seiten sein."],
+ ["Ein Viereck mit nur einem Paar paralleler Seiten ist ein Parallelogramm.",false,"Ein Parallelogramm braucht zwei Paare paralleler Seiten."],
+ ["Das Quadrat ist Rechteck und Raute zugleich.",true,"Es hat vier rechte Winkel und vier gleich lange Seiten."],
+ ["Ein Parallelogramm hat immer vier rechte Winkel.",false,"Nur das Rechteck (und das Quadrat) hat vier rechte Winkel."],
+ ["Kein Rechteck ist eine Raute.",false,"Das Quadrat ist ein Rechteck und eine Raute zugleich."],
+ ["Ein Parallelogramm mit vier rechten Winkeln ist ein Rechteck.",true,"Genau das macht ein Rechteck aus."],
+ ["Ein Parallelogramm mit vier gleich langen Seiten ist eine Raute.",true,"Genau das macht eine Raute aus."]];
+function aussageAufg(){
+  const [t,w,e]=pick(AUSSAGEN);
+  return{q:`Wahr oder falsch?<br><b>${t}</b>`,opts:["wahr","falsch"],ans:w?0:1,kat:w?"wahr":"falsch",
+    ex:(w?"Wahr: ":"Falsch: ")+e};}
+
+/* Welche Strecke ist die Höhe? Gedreht; die Höhe liegt innen oder außen (dann wird die Grundseite gestrichelt verlängert) */
+function hoeheAufg(aussenChance){
+  const W=rnd(180,210), h=rnd(88,104), V=pick(["D","C"]), aussen=Math.random()<aussenChance, r=(x,y)=>rnd(Math.round(x),Math.round(y));
+  const ov=r(.6*h,.85*h), inn=r(.6*h,Math.min(W-.6*h,1.1*h));
+  /* V = D: Lot von D; außen liegt der Fußpunkt links von A (D springt über A hinaus). V = C: Lot von C; außen liegt der Fußpunkt rechts von B */
+  const s=V==="D"?(aussen?-ov:inn):(aussen?ov:-inn);
+  const Ex=V==="D"?s:W+s;
+  /* falscher Fußpunkt F: aus allen passenden Stellen auswählen (genug Abstand zu A, B und zum richtigen Fußpunkt) */
+  const kand=[];for(let x=Math.round(Ex-1.9*h);x<=Ex+1.9*h;x+=2){const d=Math.abs(x-Ex);if(d>=.6*h&&Math.abs(x)>=.5*h&&Math.abs(x-W)>=.5*h&&x>=-W&&x<=2*W)kand.push(x);}
+  const Fx=kand.length?pick(kand):Ex+(Ex<W/2?1:-1)*h;
+  const rot=rnd(0,359)*Math.PI/180, nb=V==="D"?"A":"B", innen=Ex>0&&Ex<W;
+  const [nE,nF]=shuffle(["E","F"]);                       /* die richtige Strecke heißt mal VE, mal VF */
+  const svg=zeichnePara({W,h,s,rot,V,Fx,cand:true,grund:true,H:300,nE,nF});
+  const richtig=V+nE, falsch=V+nF;
+  return Object.assign(mc(`Welche Strecke ist die Höhe des Parallelogramms zur Grundseite AB?`,svg,"Strecke "+richtig,["Strecke "+falsch,"Strecke "+V+nb],
+    `Die Höhe steht senkrecht (im rechten Winkel) auf der Grundseite. Das ist die Strecke ${richtig}.<br>${V}${nb} ist eine schräge Seite, ${falsch} steht nicht senkrecht auf AB.${innen?"":"<br>Hier liegt die Höhe außerhalb des Parallelogramms: Die Grundseite wird dafür verlängert (gestrichelt)."}`),{kat:richtig,geo:zeichnePara.last,chk:{V,nE}});}
+
+function g21(lv){
+  if(lv===0)return figurAufg();
+  if(lv===1)return aussageAufg();
+  const t=rnd(0,9);return t<5?hoeheAufg(.7):t<7?figurAufg():aussageAufg();}
+
+/* 2-2 Flächeninhalt A = g · h: 0★ ganze Zahlen, gleiche Einheit · 1★ Kommazahlen, Höhe auch außerhalb · 2★ verschiedene Einheiten, schräge Seite als Ablenker */
+const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
+/* schräge Seite als Ablenker: länger als die Höhe, höchstens eine Nachkommastelle */
+const schraeg=h=>{let s=Math.round(h*pick([1.2,1.25,1.5,2])*10)/10;if(s<=h)s=rund(h+.5);return s;};
+/* Figur mit waagerechter Grundseite: Höhe gestrichelt mit rechtem Winkel; lage = innen | links | rechts (Höhe außerhalb: gestrichelte Verlängerung der Grundseite) */
+function paraBild(gT,hT,o){
+  const W=200, hp=clamp(Math.round(W*hT/gT),100,150), lage=o.lage||"innen";
+  const s=lage==="innen"?rnd(Math.round(.28*W),Math.round(.55*W)):lage==="links"?-rnd(Math.round(.2*W),Math.round(.32*W)):W+rnd(Math.round(.12*W),Math.round(.25*W));
+  return zeichnePara(Object.assign({W,h:hp,s,V:"D",hoehe:true,H:hp+120},o.opt));}
+function g22(lv){
+  let T,gT,hT,gv,gu,hv,hu,sch=null,o2,vor="";
+  if(lv<2){
+    T=lv===0?pick(["cm","cm","m","dm","mm"]):pick(["cm","m","dm"]);
+    if(lv===0){gT=rnd(4,15);hT=rnd(3,9);if(gT===hT)hT=hT>3?hT-1:hT+2;}
+    else{gT=pick([1.5,2.5,3.5,4.5,1.2,2.4,0.8,6.5,7.5,3.2]);hT=pick([2,3,4,5,6,1.5,2.5,1.2,3.5]);if(hT===gT)hT=4;}
+    gv=gT;gu=T;hv=hT;hu=T;
+  }else{
+    const e=pick(PAAR), U=e[0], k=e[1], gBig=rnd(0,1)===1, x=pick(e[3]), y=pick(e[4]);
+    if(gBig){gv=x;gu=U;hv=y;hu=k;}else{gv=y;gu=k;hv=x;hu=U;}
+    T=rnd(0,1)?U:k;o2=T===U?k:U;gT=convL(gv,gu,T);hT=convL(hv,hu,T);
+    vor=[[gv,gu,gT],[hv,hu,hT]].filter(z=>z[1]!==T).map(z=>`${L(z[0],z[1])} = ${L(z[2],T)}`).join("; ");
+    sch=schraeg(hT);
+  }
+  const A=rund(gT*hT), lage=lv===0?"innen":pick(lv===1?["innen","innen","links"]:["innen","links","links"]);
+  const bild=paraBild(gT,hT,{lage,opt:{gl:"g = "+L(gv,gu),hl:"h = "+L(hv,hu),sl:sch!=null?L(sch,T):""}});
+  const geo=zeichnePara.last;
+  return{geo,q:`Parallelogramm: Berechne den Flächeninhalt A${lv===2?` in ${QU(T)}`:""}.`,svg:bild,
+    felder:[{label:"A =",ok:[[A,QU(T)]],units:wahl(T,o2)}],kat:String(A),loes:`A = ${L(A,QU(T))}`,
+    tipp:x=>{const v=x[0];
+      if(sch!=null&&(gleich(v,rund(gT*sch))||gleich(v,rund(hT*sch))))return"Die schräge Seite ist nicht die Höhe. Nimm Grundseite und Höhe (senkrecht zur Grundseite).";
+      if(gleich(v,rund(gT+hT)))return"Beim Flächeninhalt wird multipliziert: A = g · h.";
+      if(gleich(v,rund(gT*hT/2)))return"Beim Parallelogramm wird nicht halbiert: A = g · h.";
+      if(lv===2&&gleich(v,rund(gv*hv)))return"Erst gleiche Einheiten, dann rechnen!";
+      return"";},
+    ex:`${vor?"Erst gleiche Einheiten: "+vor+"<br>":""}A = g · h = ${L(gT,T)} · ${L(hT,T)} = ${L(A,QU(T))}${sch!=null?`<br>Die schräge Seite (${L(sch,T)}) braucht man für den Flächeninhalt nicht.`:""}`};
+}
+
+/* 2-3 Fehlende Größe (durch Überlegen, ohne Umstellen): 0★ g oder h aus A · 1★ mit Ablenker, Kommazahlen · 2★ gemischt, verschiedene Einheiten */
+function fehltAufg(o){
+  const T=o.T, ges=o.ges, bek=ges==="h"?"g":"h", A=rund(o.known*o.res), kd=o.kd||L(o.known,T), Ad=o.Ad!=null?o.Ad:A, Au=o.Au||QU(T);
+  const gT=ges==="g"?o.res:o.known, hT=ges==="g"?o.known:o.res, sch=o.sch!=null?o.sch:null;
+  const bild=paraBild(gT,hT,{lage:o.lage,opt:{gl:ges==="g"?"g = ?":"g = "+kd,hl:ges==="h"?"h = ?":"h = "+kd,mitte:"A = "+L(Ad,Au),sl:sch!=null?L(sch,T):""}});
+  const geo=zeichnePara.last;
+  const rest=ges==="h"?`${L(o.known,T)} · ? = ${L(A,QU(T))}`:`? · ${L(o.known,T)} = ${L(A,QU(T))}`;
+  return{geo,q:`Parallelogramm: A = ${L(Ad,Au)}, ${bek} = ${kd}.${sch!=null?` Die schräge Seite ist ${L(sch,T)} lang.`:""} Berechne die fehlende ${ges==="h"?"Höhe h":"Grundseite g"}${o.inT?` in ${T}`:""}.`,svg:bild,
+    felder:[{label:ges+" =",ok:[[o.res,T]],units:wahl(T,o.o2)}],kat:String(o.res),loes:`${ges} = ${L(o.res,T)}`,
+    tipp:x=>{const v=x[0];
+      if(o.tipp){const t=o.tipp(v);if(t)return t;}
+      if(gleich(v,rund(A-o.known)))return"Beim Flächeninhalt wird multipliziert: g · h = A. Hier fehlt ein Faktor.";
+      if(gleich(v,rund(A*o.known)))return`Gesucht ist die Zahl, mit der du ${L(o.known,T)} multiplizieren musst, um ${L(A,QU(T))} zu erhalten. Dividiere.`;
+      if(sch!=null&&gleich(v,rund(A/sch)))return`Die schräge Seite braucht man nicht. Rechne mit ${bek} = ${kd}.`;
+      return"";},
+    ex:`${o.vor||""}${rest}<br>${ges} = ${L(A,QU(T))} : ${L(o.known,T)} = ${L(o.res,T)}${sch!=null?"<br>Die schräge Seite braucht man hier nicht.":""}`};}
+const PAIRS_A1=[[50,200],[40,150],[25,80],[20,150],[50,120],[40,200],[25,160],[50,60]];          /* a · b in cm² ergibt glatte m² */
+const PAIRS_A2=[[40,25],[50,30],[20,45],[60,35],[30,70],[80,15],[45,20],[25,40]];                 /* a · b in cm² ergibt glatte dm² */
+function g23(lv){
+  const ges=pick(["g","h"]);
+  if(lv===0){const T=pick(["cm","cm","m","dm","mm"]);let k=rnd(3,12),r=rnd(2,10);while(r===k)r=rnd(2,10);return fehltAufg({ges,known:k,res:r,T,lage:"innen"});}
+  const lage=pick(["innen","innen","links"]);
+  if(lv===1){
+    const T=pick(["cm","m"]), d=pick([2.5,1.5,0.5,1.2,3.5,4.5]), n=rnd(2,8), dez=rnd(0,1)===1, known=dez?d:n, res=dez?n:d, h=ges==="h"?res:known;
+    return fehltAufg({ges,known,res,T,lage,sch:schraeg(h)});}
+  const t=rnd(0,2);
+  if(t===0){const e=pick(PAIRS_A1), sw=rnd(0,1)===1, known=sw?e[1]:e[0], res=sw?e[0]:e[1], Ac=known*res, Am=rund(Ac/10000), h=ges==="h"?res:known;
+    return fehltAufg({ges,known,res,T:"cm",Ad:Am,Au:"m²",inT:true,o2:"m",lage,sch:schraeg(h),
+      vor:`Erst gleiche Einheiten: ${L(Am,"m²")} = ${L(Ac,"cm²")} (1 m² = 10${NB}000 cm²)<br>`,
+      tipp:v=>gleich(v,rund(Am*100/known))?"1 m² = 10 000 cm² (zwei Stufen, Komma 4 Stellen).":gleich(v,rund(Am/known))?"Erst gleiche Einheiten, dann rechnen!":""});}
+  if(t===1){const e=pick(PAIRS_A2), sw=rnd(0,1)===1, known=sw?e[1]:e[0], res=sw?e[0]:e[1], Ac=known*res, Ad=rund(Ac/100), h=ges==="h"?res:known;
+    return fehltAufg({ges,known,res,T:"cm",Ad,Au:"dm²",inT:true,o2:"dm",lage,sch:schraeg(h),
+      vor:`Erst gleiche Einheiten: ${L(Ad,"dm²")} = ${L(Ac,"cm²")} (1 dm² = 100 cm²)<br>`,
+      tipp:v=>gleich(v,rund(Ad*10/known))?"Bei Flächen ist die Umrechnungszahl 100: 1 dm² = 100 cm².":gleich(v,rund(Ad/known))?"Erst gleiche Einheiten, dann rechnen!":""});}
+  const kdm=pick([1.5,2,2.5,1.2,3,0.5]), kcm=rund(kdm*10), res=pick([4,6,8,5,12,10]), A=kcm*res, h=ges==="h"?res:kcm;
+  return fehltAufg({ges,known:kcm,res,T:"cm",kd:L(kdm,"dm"),inT:true,o2:"dm",lage,sch:schraeg(h),
+    vor:`Erst gleiche Einheiten: ${L(kdm,"dm")} = ${L(kcm,"cm")}<br>`,
+    tipp:v=>gleich(v,rund(A/kdm))?"Erst gleiche Einheiten, dann rechnen!":""});
+}
+
+/* 2-4 Sachaufgaben aus dem Alltag der Schüler (Runde = 5): Maße ablesen, überflüssige Angaben überlesen
+   0★ gleiche Einheit, nur der Preis als überflüssige Angabe · 1★ Kommazahlen, schräge Seite und mehr überflüssige Angaben, auch „Höhe oder Grundseite gesucht“
+   · 2★ verschiedene Einheiten, Ergebniseinheit vorgegeben. d0/d1: [g, h, schräge Seite] in T · d2: [g, Einheit, h, Einheit, schräge Seite in T] */
+const PROD2=[
+ {n:"Skateboard-Rampenplatte „Kicker“",p:"39,99 €",fA:"Wie groß ist die Fläche der Platte?",T:"cm",
+  d0:[[80,50,60],[90,40,50],[120,60,75],[100,45,55]],d1:[[82.5,40,50],[67.5,30,35],[92.5,50,60],[72.5,40,45]],
+  d2:[[1.2,"m",50,"cm",60],[90,"cm",0.6,"m",75],[1.5,"m",40,"cm",55],[80,"cm",0.5,"m",60]],
+  x:["Material: Birkenholz","Belastbar bis 120 kg","Gewicht: 3,4 kg","Lieferzeit: 3–5 Werktage","Mit Griptape beklebt"]},
+ {n:"Wandspiegel „Pop-Art“",p:"59,90 €",fA:"Wie groß ist die Spiegelfläche?",T:"cm",
+  d0:[[60,40,50],[50,30,40],[70,45,55],[80,50,65]],d1:[[62.5,40,50],[47.5,30,40],[72.5,40,50],[52.5,50,60]],
+  d2:[[0.8,"m",45,"cm",55],[70,"cm",0.5,"m",60],[1,"m",35,"cm",45],[60,"cm",0.4,"m",50]],
+  x:["Rahmen: schwarz","Mit Aufhänger","Gewicht: 2,6 kg","Lieferzeit: 2–4 Werktage","Glasdicke: 4 mm"]},
+ {n:"Mauspad „Speed“",p:"14,99 €",fA:"Wie groß ist die Arbeitsfläche des Mauspads?",T:"cm",
+  d0:[[40,25,30],[35,20,25],[45,30,35],[30,20,25]],d1:[[32.5,20,25],[42.5,20,25],[37.5,20,25],[27.5,30,35]],
+  d2:[[0.5,"m",30,"cm",35],[45,"cm",0.3,"m",35],[0.4,"m",25,"cm",30],[35,"cm",0.2,"m",25]],
+  x:["Rutschfeste Unterseite","Dicke: 3 mm","Gewicht: 250 g","Lieferzeit: 1–2 Werktage","Farbe: Neon-Türkis"]},
+ {n:"Fallschutzmatte „Zickzack“",p:"129,00 €",fA:"Wie groß ist die Fläche der Matte?",T:"m",
+  d0:[[2,1,2],[3,2,3],[4,1,2],[5,2,3]],d1:[[1.5,2,2.5],[2.5,1,2],[3.5,2,3],[4.5,2,3]],
+  d2:[[2,"m",50,"cm",1],[3,"m",50,"cm",1],[150,"cm",2,"m",2.5],[250,"cm",2,"m",2.5]],
+  x:["Dicke: 4 cm","Gewicht: 18 kg","Wasserdurchlässig","Lieferzeit: 5 Werktage","Farbe: Grün"]},
+ {n:"Gewächshaus-Seitenscheibe",p:"64,50 €",fA:"Wie groß ist die Scheibe?",T:"dm",
+  d0:[[12,8,10],[10,6,8],[15,9,11],[9,6,8]],d1:[[11.5,8,9],[8.5,6,7],[13.5,8,10],[9.5,4,5]],
+  d2:[[1.5,"m",7,"dm",9],[1.2,"m",8,"dm",10],[11,"dm",0.6,"m",8],[9,"dm",0.5,"m",7]],
+  x:["Material: Acrylglas","Dicke: 4 mm","Gewicht: 3,2 kg","Lieferzeit: 4 Werktage","Mit UV-Schutz"]},
+ {n:"Dachfenster-Glas „Skylight“",p:"112,00 €",fA:"Wie groß ist die Glasfläche?",T:"dm",
+  d0:[[14,10,12],[16,12,14],[12,9,11],[10,8,10]],d1:[[13.5,10,11],[11.5,8,9],[15.5,10,12],[9.5,6,7]],
+  d2:[[1.4,"m",9,"dm",11],[12,"dm",0.8,"m",10],[1.6,"m",11,"dm",13],[13,"dm",0.9,"m",11]],
+  x:["Doppelverglasung","Gewicht: 14 kg","Lieferzeit: 7 Werktage","Mit Dichtung","Farbe des Rahmens: Anthrazit"]},
+ {n:"Sitzfläche der Pausenbank",p:"76,00 €",fA:"Wie groß ist die Sitzfläche?",T:"cm",
+  d0:[[120,40,50],[150,45,55],[100,35,45],[180,50,60]],d1:[[112.5,40,50],[137.5,60,70],[97.5,40,50],[162.5,50,60]],
+  d2:[[1.5,"m",45,"cm",55],[120,"cm",0.4,"m",50],[1.8,"m",40,"cm",50],[150,"cm",0.5,"m",60]],
+  x:["Material: Lärchenholz","Wetterfest lasiert","Gewicht: 12 kg","Lieferzeit: 6 Werktage","Mit 4 Standfüßen"]},
+ {n:"Sonnenschutz-Plane „Terrasse“",p:"49,90 €",fA:"Wie groß ist die Plane?",T:"m",
+  d0:[[4,3,4],[5,2,3],[6,3,4],[3,2,3]],d1:[[2.5,2,3],[3.5,4,5],[4.5,2,3],[2.5,4,5.5]],
+  d2:[[3,"m",150,"cm",2],[250,"cm",2,"m",3],[4,"m",250,"cm",3.5],[350,"cm",2,"m",3]],
+  x:["Material: Polyester","Gewicht: 1,4 kg","UV-Schutz 50+","Lieferzeit: 3 Werktage","Mit 4 Befestigungsösen"]}];
+/* Vorlesen für Schüler mit Leseschwäche: Einheiten werden ausgeschrieben */
+const sprech=t=>t.replace(/(\d) (\d{3})/g,"$1$2").replace(/ /g," ").replace(/\bmm²/g,"Quadratmillimeter").replace(/\bcm²/g,"Quadratzentimeter").replace(/\bdm²/g,"Quadratdezimeter").replace(/\bm²/g,"Quadratmeter")
+  .replace(/(\d) ?cm\b/g,"$1 Zentimeter").replace(/(\d) ?dm\b/g,"$1 Dezimeter").replace(/(\d) ?mm\b/g,"$1 Millimeter").replace(/(\d) ?m\b/g,"$1 Meter").replace(/(\d) ?kg\b/g,"$1 Kilogramm").replace(/(\d) ?g\b/g,"$1 Gramm")
+  .replace(/ ?€/g," Euro").replace(/(\d) ?%/g,"$1 Prozent");
+function vorlesen(t){
+  if(!("speechSynthesis" in window))return;
+  speechSynthesis.cancel();const u=new SpeechSynthesisUtterance(sprech(t));u.lang="de-DE";u.rate=.92;speechSynthesis.speak(u);}
+const ea=s=>esc(s).replace(/"/g,"&quot;");
+function shop2(P,lines,frage){
+  return `<div class="shop"><div class="tagS">ONLINE-SHOP – PRODUKTBESCHREIBUNG</div><h3>${P.n}</h3><div class="preis">${P.p}</div><ul>${lines.map(t=>`<li>${t}</li>`).join("")}</ul>
+    <span class="korb">In den Warenkorb</span> <button type="button" class="vor" data-vor="${ea([P.n,...lines,frage].join(". "))}" aria-label="Aufgabe vorlesen">🔊 Vorlesen</button></div>`;}
+function g24(lv){
+  const P=pick(PROD2), T=P.T, typ=lv===0?"A":pick(["A","H"]);
+  let gv,gu,hv,hu,s;
+  if(lv<2){const e=pick(lv===0?P.d0:P.d1);gv=e[0];hv=e[1];s=e[2];gu=hu=T;}
+  else{const e=pick(P.d2);gv=e[0];gu=e[1];hv=e[2];hu=e[3];s=e[4];}
+  const gT=convL(gv,gu,T), hT=convL(hv,hu,T), A=rund(gT*hT), o2=[gu,hu].find(u=>u!==T);
+  const vor=[[gv,gu,gT],[hv,hu,hT]].filter(z=>z[1]!==T).map(z=>`${L(z[0],z[1])} = ${L(z[2],T)}`);
+  const mG=`Grundseite: ${L(gv,gu)}`, mH=`Höhe: ${L(hv,hu)}`, mS=`Schräge Seite: ${L(s,T)}`;
+  const extra=shuffle(P.x).slice(0,lv===0?0:lv===1?2:3), erst=vor.length?"Erst gleiche Einheiten: "+vor.join("; ")+"<br>":"";
+  const ueber=`Alle anderen Angaben (Preis${lv?", schräge Seite, Gewicht, Lieferzeit …":""}) braucht man nicht.`;
+  const ordne=l=>lv<2?l:shuffle(l);
+  if(typ==="A"){
+    const q=`Lies die Maße aus der Produktbeschreibung ab. ${P.fA}${lv===2?` Gib A in ${QU(T)} an.`:""}`;
+    const lines=ordne([mG,mH,...(lv>=1?[mS]:[]),...extra]);
+    return{q,svg:shop2(P,lines,q),felder:[{label:"A =",ok:[[A,QU(T)]],units:wahl(T,o2)}],kat:P.n,loes:`A = ${L(A,QU(T))}`,
+      tipp:x=>{const v=x[0];
+        if(lv>=1&&(gleich(v,rund(gT*s))||gleich(v,rund(hT*s))))return"Die schräge Seite braucht man für den Flächeninhalt nicht. Nimm Grundseite und Höhe.";
+        if(lv>=1&&gleich(v,rund(2*(gT+s))))return"Das ist der Umfang (der Rand). Gefragt ist die Fläche.";
+        if(gleich(v,rund(gT*hT/2)))return"Beim Parallelogramm wird nicht halbiert: A = g · h.";
+        if(gleich(v,rund(gT+hT)))return"Beim Flächeninhalt wird multipliziert: A = g · h.";
+        if(lv===2&&gleich(v,rund(gv*hv)))return"Erst gleiche Einheiten, dann rechnen!";
+        return"";},
+      ex:`${erst}A = g · h = ${L(gT,T)} · ${L(hT,T)} = ${L(A,QU(T))}<br>${ueber}`};}
+  /* fehlende Größe: Fläche und eine Seite stehen in der Beschreibung (2★: die bekannte Seite in der anderen Einheit) */
+  const kn=lv===2?(gu!==T?"g":"h"):pick(["g","h"]), ges=kn==="g"?"h":"g", known=kn==="g"?gT:hT, res=ges==="h"?hT:gT, kv=kn==="g"?gv:hv;
+  const q=`Lies die Maße aus der Produktbeschreibung ab. Berechne die fehlende ${ges==="h"?"Höhe h":"Grundseite g"}${lv===2?` in ${T}`:""}.`;
+  const lines=ordne([`Fläche: ${L(A,QU(T))}`,kn==="g"?mG:mH,mS,...extra]);
+  const rest=ges==="h"?`${L(known,T)} · ? = ${L(A,QU(T))}`:`? · ${L(known,T)} = ${L(A,QU(T))}`;
+  return{q,svg:shop2(P,lines,q),felder:[{label:ges+" =",ok:[[res,T]],units:wahl(T,o2)}],kat:P.n,loes:`${ges} = ${L(res,T)}`,
+    tipp:x=>{const v=x[0];
+      if(gleich(v,rund(A-known)))return"Beim Flächeninhalt wird multipliziert: g · h = A. Hier fehlt ein Faktor.";
+      if(gleich(v,rund(A*known)))return`Gesucht ist die Zahl, mit der du ${L(known,T)} multiplizieren musst, um ${L(A,QU(T))} zu erhalten. Dividiere.`;
+      if(gleich(v,rund(A/s)))return"Die schräge Seite braucht man nicht. Rechne mit der Fläche und der anderen Seite aus der Beschreibung.";
+      if(lv===2&&gleich(v,rund(A/kv)))return"Erst gleiche Einheiten, dann rechnen!";
+      return"";},
+    ex:`${erst}${rest}<br>${ges} = ${L(A,QU(T))} : ${L(known,T)} = ${L(res,T)}<br>${ueber}`};
+}
+
+const DH=(()=>{
+function lin(P,Q,o){o=o||{};return '<line x1="'+P[0].toFixed(1)+'" y1="'+P[1].toFixed(1)+'" x2="'+Q[0].toFixed(1)+'" y2="'+Q[1].toFixed(1)+'" stroke="'+(o.st||"#000")+'" stroke-width="'+(o.sw||2)+'"'+(o.dash?' stroke-dasharray="'+o.dash+'"':'')+' stroke-linecap="round"/>';}
+const ein=d=>{const l=Math.hypot(d[0],d[1])||1;return [d[0]/l,d[1]/l];};
+const pkt=p=>p[0].toFixed(1)+" "+p[1].toFixed(1);
+/* rechter Winkel als runder Bogen mit Punkt, beliebig gedreht (P = Scheitel, u, v = Richtungen der Schenkel) */
+function rwB(P,u,v,r){r=r||12;u=ein(u);v=ein(v);
+  const p1=[P[0]+u[0]*r,P[1]+u[1]*r],p2=[P[0]+v[0]*r,P[1]+v[1]*r],sw=(u[0]*v[1]-u[1]*v[0])>0?1:0;
+  const m=[P[0]+(u[0]+v[0])*r*0.42,P[1]+(u[1]+v[1])*r*0.42];
+  return '<path d="M'+pkt(p1)+' A'+r+' '+r+' 0 0 '+sw+' '+pkt(p2)+'" fill="none" stroke="#000" stroke-width="1.4"/><circle cx="'+m[0].toFixed(1)+'" cy="'+m[1].toFixed(1)+'" r="1.8" fill="#000"/>';}
+/* Winkelbogen mit Gradzahl im Bogen */
+function wB(P,u,v,r,txt){u=ein(u);v=ein(v);const p1=[P[0]+u[0]*r,P[1]+u[1]*r],p2=[P[0]+v[0]*r,P[1]+v[1]*r],sw=(u[0]*v[1]-u[1]*v[0])>0?1:0;
+  const b=ein([u[0]+v[0],u[1]+v[1]]),t=[P[0]+b[0]*r*0.62,P[1]+b[1]*r*0.62+4];
+  return '<path d="M'+pkt(p1)+' A'+r+' '+r+' 0 0 '+sw+' '+pkt(p2)+'" fill="none" stroke="#000" stroke-width="1.3"/><text x="'+t[0].toFixed(1)+'" y="'+t[1].toFixed(1)+'" text-anchor="middle" font-size="12" font-family="Arial">'+txt+'</text>';}
+/* zwei Striche für gleich lange Seiten */
+function strich2(P,Q){const m=[(P[0]+Q[0])/2,(P[1]+Q[1])/2],d=ein([Q[0]-P[0],Q[1]-P[1]]),n=[-d[1],d[0]];let s="";
+  [-3,3].forEach(o=>{const c=[m[0]+d[0]*o,m[1]+d[1]*o];s+='<line x1="'+(c[0]-n[0]*6).toFixed(1)+'" y1="'+(c[1]-n[1]*6).toFixed(1)+'" x2="'+(c[0]+n[0]*6).toFixed(1)+'" y2="'+(c[1]+n[1]*6).toFixed(1)+'" stroke="#000" stroke-width="1.6"/>';});return s;}
+function T(x,y,t,o){o=o||{};return '<text x="'+(+x).toFixed(1)+'" y="'+(+y).toFixed(1)+'" font-family="Arial" font-size="'+(o.fs||16)+'" text-anchor="'+(o.anc||"middle")+'"'+(o.it?' font-style="italic"':'')+(o.fill?' fill="'+o.fill+'"':'')+(o.b?' font-weight="bold"':'')+'>'+t+'</text>';}
+function poly(P,o){o=o||{};return '<polygon points="'+P.map(pkt).join(" ")+'" fill="'+(o.fill||"#fff")+'" stroke="'+(o.st||"#000")+'" stroke-width="'+(o.sw||2)+'" stroke-linejoin="round"/>';}
+
+const DGC="#1565C0",DHC="#C2410C";
+const _f=x=>(+x).toFixed(1);
+/* Dreieck: P = [[x,y],…] in cm (y nach oben). o: s (px/cm), real (Originalgröße, für das Geodreieck), tk {AB:2,…}, rw "A"|"B"|"C",
+   w {A:"60°"}, h (Höhe von C auf AB), hs ("AC"|"BC": Höhe ist Seite), gl, hl (Beschriftungen), ecken (Standard ja) */
+function dr(P,o){o=o||{};const s=o.real?34:(o.s||22),pad=o.pad||(o.hl?70:30);
+  const N={A:P[0],B:P[1],C:P[2]};const A=N.A,B=N.B,C=N.C;
+  const dx=B[0]-A[0],dy=B[1]-A[1],t=((C[0]-A[0])*dx+(C[1]-A[1])*dy)/(dx*dx+dy*dy),F=[A[0]+t*dx,A[1]+t*dy];
+  const pts=[A,B,C].concat(o.h?[F]:[]),xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]);
+  const x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys);
+  const W=(x1-x0)*s+2*pad,H=(y1-y0)*s+60;
+  const T=p=>[pad+(p[0]-x0)*s,30+(y1-p[1])*s];
+  const q=k=>T(N[k]);
+  let g='<svg class="'+(o.real?"mess":"dsvg")+'" width="'+W.toFixed(0)+'" height="'+H.toFixed(0)+'" viewBox="0 0 '+W.toFixed(0)+' '+H.toFixed(0)+'" role="img" aria-label="Dreieck">';
+  g+='<polygon points="'+[q("A"),q("B"),q("C")].map(p=>_f(p[0])+","+_f(p[1])).join(" ")+'" fill="'+(o.real?"#fff":"#E8F5EE")+'" stroke="none"/>';
+  [["A","B"],["B","C"],["C","A"]].forEach(([u,v])=>{const k=u+v;let col="#000",w=2.2;
+    if(o.gl&&k==="AB"){col=DGC;w=3.5}if(o.hs&&(o.hs===k||o.hs===v+u)){col=DHC;w=3.5}
+    g+='<line x1="'+_f(q(u)[0])+'" y1="'+_f(q(u)[1])+'" x2="'+_f(q(v)[0])+'" y2="'+_f(q(v)[1])+'" stroke="'+col+'" stroke-width="'+w+'" stroke-linecap="round"/>';});
+  if(o.h&&!o.hs){const f=T(F),c=q("C");
+    if(t<0)g+='<line x1="'+_f(f[0])+'" y1="'+_f(f[1])+'" x2="'+_f(q("A")[0])+'" y2="'+_f(q("A")[1])+'" stroke="#000" stroke-width="1.4" stroke-dasharray="5 4"/>';
+    if(t>1)g+='<line x1="'+_f(q("B")[0])+'" y1="'+_f(q("B")[1])+'" x2="'+_f(f[0])+'" y2="'+_f(f[1])+'" stroke="#000" stroke-width="1.4" stroke-dasharray="5 4"/>';
+    g+='<line x1="'+_f(c[0])+'" y1="'+_f(c[1])+'" x2="'+_f(f[0])+'" y2="'+_f(f[1])+'" stroke="'+DHC+'" stroke-width="2.4" stroke-dasharray="7 5"/>';
+    const u=ein([c[0]-f[0],c[1]-f[1]]),v=ein([(t>.5?q("A"):q("B"))[0]-f[0],(t>.5?q("A"):q("B"))[1]-f[1]]);g+=rwB(f,u,v,11);
+    if(o.hl){const m=[(c[0]+f[0])/2,(c[1]+f[1])/2],rechts=t>1;g+=T2(m[0]+(rechts?8:-8),m[1]+5,o.hl,{fill:DHC,anchor:rechts?"start":"end"});}}
+  if(o.hs&&o.hl){const a=q(o.hs[0]),b=q(o.hs[1]);g+=T2((a[0]+b[0])/2-8,(a[1]+b[1])/2+5,o.hl,{fill:DHC,anchor:"end"});}
+  if(o.gl){const a=q("A"),b=q("B");g+=T2((a[0]+b[0])/2,a[1]+24,o.gl,{fill:DGC});}
+  for(const k in (o.tk||{})){const a=q(k[0]),b=q(k[1]);g+=strich2(a,b);}
+  const cx=(q("A")[0]+q("B")[0]+q("C")[0])/3,cy=(q("A")[1]+q("B")[1]+q("C")[1])/3;
+  for(const v of ["A","B","C"]){const p=q(v),an=["A","B","C"].filter(x=>x!==v).map(x=>q(x));
+    const u1=ein([an[0][0]-p[0],an[0][1]-p[1]]),u2=ein([an[1][0]-p[0],an[1][1]-p[1]]);
+    if(o.rw===v)g+=rwB(p,u1,u2,15);else if(o.w&&o.w[v])g+=wB(p,u1,u2,o.w[v].length>3?34:28,o.w[v]);
+    if(o.ecken!==false){const d=ein([p[0]-cx,p[1]-cy]);g+=T2(p[0]+d[0]*16,p[1]+d[1]*16+6,v,{});}}
+  return g+'</svg>';}
+function T2(x,y,t,o){return '<text x="'+_f(x)+'" y="'+_f(y)+'" font-family="Arial" font-size="'+(o.fs||16)+'" font-weight="700" text-anchor="'+(o.anchor||"middle")+'" fill="'+(o.fill||"#000")+'" stroke="#fff" stroke-width="4" paint-order="stroke">'+t+'</text>';}
+/* Winkel: Scheitel, ein Schenkel waagerecht nach rechts. o: L (px), lab (Gradzahl im Bogen), real (für das Geodreieck: 1 cm = 34 px) */
+function wk(d,o){o=o||{};const L=o.real?136:(o.L||90),r=o.lab?Math.max(26,L*.32):24,a=d*Math.PI/180;
+  const pts=[[0,0],[L,0],[L*Math.cos(a),-L*Math.sin(a)]];for(let i=0;i<=16;i++)pts.push([r*Math.cos(a*i/16),-r*Math.sin(a*i/16)]);
+  const xs=pts.map(p=>p[0]),ys=pts.map(p=>p[1]),x0=Math.min(...xs)-14,y0=Math.min(...ys)-14,W=Math.max(...xs)-x0+14,H=Math.max(...ys)-y0+14;
+  const S=[-x0,-y0],E=[L-x0,-y0],Z=[L*Math.cos(a)-x0,-L*Math.sin(a)-y0];
+  let g='<svg class="'+(o.real?"mess":"wsvg")+'" width="'+W.toFixed(0)+'" height="'+H.toFixed(0)+'" viewBox="0 0 '+W.toFixed(0)+' '+H.toFixed(0)+'" role="img" aria-label="Winkel">';
+  g+=lin(S,E,{sw:2.4})+lin(S,Z,{sw:2.4})+'<circle cx="'+_f(S[0])+'" cy="'+_f(S[1])+'" r="3"/>';
+  if(d===90)g+=rwB(S,[1,0],[0,-1],18);
+  else{const e=d>=360?359.9:d,ea=e*Math.PI/180;g+='<path d="M'+_f(S[0]+r)+' '+_f(S[1])+' A'+r+' '+r+' 0 '+(e>180?1:0)+' 0 '+_f(S[0]+r*Math.cos(ea))+' '+_f(S[1]-r*Math.sin(ea))+'" fill="none" stroke="#000" stroke-width="1.6"/>';
+    if(o.lab){const m=ea/2;g+=T2(S[0]+r*.6*Math.cos(m)+(d<40?6:0),S[1]-r*.6*Math.sin(m)+5,d+"°",{fs:13});}}
+  return g+'</svg>';}
+
+return {dr,wk};})();
+/* ================= Level 3 · Das Dreieck ================= */
+const W6=["spitzer Winkel","rechter Winkel","stumpfer Winkel","gestreckter Winkel","überstumpfer Winkel","Vollwinkel"];
+const wArt=d=>d<90?W6[0]:d===90?W6[1]:d<180?W6[2]:d===180?W6[3]:d<360?W6[4]:W6[5];
+const wGrund={"spitzer Winkel":"0° < α < 90°","rechter Winkel":"α = 90°","stumpfer Winkel":"90° < α < 180°","gestreckter Winkel":"α = 180°","überstumpfer Winkel":"180° < α < 360°","Vollwinkel":"α = 360°"};
+const andere=(r,L)=>shuffle(L.filter(x=>x!==r));
+const halb='<span style="display:inline-flex;flex-direction:column;align-items:center;vertical-align:middle;line-height:1;font-size:.8em;margin:0 .1em"><span style="border-bottom:2px solid currentColor;padding:0 .15em">1</span><span>2</span></span>';
+const tolL=(v,u)=>[[rund(v-.1),u],[v,u],[rund(v+.1),u]];
+const tolA=(g,h,u)=>{const s=[];[g-.1,g,g+.1].forEach(a=>[h-.1,h,h+.1].forEach(b=>s.push([rund(Math.round(a*b/2*1000)/1000),u])));return s;};
+/* 3-1 Winkelarten: 0★ Zeichnung mit Gradzahl · 1★ nur Gradzahl, Grenzfälle, Winkel messen · 2★ nur Zeichnung (schätzen) und messen */
+function messWinkel(){const d=pick([35,48,57,63,72,104,118,127,136,152]),r=wArt(d);
+  return{q:"Miss den Winkel mit dem 📐 Geodreieck (Knopf unten rechts). Lege die 0 auf den Scheitel und die Kante auf den unteren Schenkel.",svg:DH.wk(d,{real:true}),
+    felder:[{label:"α =",ok:[[d-1,"°"],[d,"°"],[d+1,"°"]],fest:"°"}],kat:"m"+d,loes:`α = ${d}°`,
+    tipp:x=>Math.abs(x[0]-(180-d))<=1?"Du hast auf der falschen Skala abgelesen. Ein "+r+" ist "+(d<90?"kleiner":"größer")+" als 90°.":"",
+    ex:`α = ${d}° → ${r} (${wGrund[r]})`};}
+function g31(lv){
+  if(lv===0){const d=pick([25,40,55,70,90,110,130,150,180,200,240,300,360]),r=wArt(d);
+    return Object.assign(mc("Welche Winkelart ist das?",DH.wk(d,{lab:true}),r,andere(r,W6),`${d}° → ${r}<br>${wGrund[r]}`),{kat:r});}
+  if(lv===1){if(rnd(0,9)<3)return messWinkel();
+    const d=pick([1,45,89,90,91,135,179,180,181,250,359,360]),r=wArt(d);
+    return Object.assign(mc(`Welche Winkelart hat <b>α = ${d}°</b>?`,"",r,andere(r,W6),`${r}: ${wGrund[r]}`+(d===89||d===91||d===179||d===181?"<br>Genau 90° und genau 180° sind eigene Winkelarten – schon 1° mehr oder weniger ändert die Art.":"")),{kat:r});}
+  if(rnd(0,9)<3)return messWinkel();
+  const d=pick([20,65,90,100,160,180,210,280,330,360]),r=wArt(d);
+  return Object.assign(mc("Schätze: Welche Winkelart ist das?",DH.wk(d),r,andere(r,W6),`Der Winkel ist ${d}° groß → ${r}.`),{kat:r});}
+/* 3-2 Dreiecke einteilen */
+const SE=["unregelmäßig","gleichschenklig","gleichseitig"],WI=["spitzwinklig","rechtwinklig","stumpfwinklig"];
+const DREI=[ /* Punkte in cm, Markierungen, Seitenart, Winkelart */
+ {p:[[0,0],[5,0],[2.5,4.33]],o:{tk:{AB:2,BC:2,CA:2}},s:"gleichseitig",w:"spitzwinklig"},
+ {p:[[0,0],[4,0],[2,5]],o:{tk:{BC:2,CA:2}},s:"gleichschenklig",w:"spitzwinklig"},
+ {p:[[0,0],[4,0],[0,4]],o:{tk:{AB:2,CA:2},rw:"A"},s:"gleichschenklig",w:"rechtwinklig"},
+ {p:[[0,0],[7,0],[3.5,1.5]],o:{tk:{BC:2,CA:2},w:{C:"134°"}},s:"gleichschenklig",w:"stumpfwinklig"},
+ {p:[[0,0],[6,0],[4.5,2.5]],o:{w:{A:"29°",B:"59°",C:"92°"}},s:"unregelmäßig",w:"stumpfwinklig"},
+ {p:[[0,0],[5,0],[5,3]],o:{rw:"B"},s:"unregelmäßig",w:"rechtwinklig"},
+ {p:[[0,0],[5,0],[1.5,3.5]],o:{w:{A:"67°",B:"45°",C:"68°"}},s:"unregelmäßig",w:"spitzwinklig"},
+ {p:[[0,0],[5,0],[6.5,2]],o:{w:{B:"127°"}},s:"unregelmäßig",w:"stumpfwinklig"},
+ {p:[[0,0],[6,0],[0,2.5]],o:{rw:"A"},s:"unregelmäßig",w:"rechtwinklig"}];
+const GIBT=[["Gibt es ein gleichseitiges stumpfwinkliges Dreieck?",false,"Im gleichseitigen Dreieck ist jeder Winkel 60°."],
+ ["Gibt es ein gleichschenklig-rechtwinkliges Dreieck?",true,"Zum Beispiel mit den Winkeln 90°, 45° und 45°."],
+ ["Gibt es ein Dreieck mit zwei stumpfen Winkeln?",false,"Zwei stumpfe Winkel sind zusammen schon mehr als 180°."],
+ ["Gibt es ein Dreieck mit den Winkeln 90°, 60° und 40°?",false,"90° + 60° + 40° = 190°, das sind mehr als 180°."],
+ ["Gibt es ein unregelmäßig-rechtwinkliges Dreieck?",true,"Zum Beispiel mit den Winkeln 90°, 30° und 60°."],
+ ["Gibt es ein gleichseitiges rechtwinkliges Dreieck?",false,"Im gleichseitigen Dreieck ist jeder Winkel 60°."],
+ ["Gibt es ein gleichschenklig-stumpfwinkliges Dreieck?",true,"Zum Beispiel mit den Winkeln 120°, 30° und 30°."],
+ ["Gibt es ein Dreieck mit den Winkeln 50°, 60° und 70°?",true,"50° + 60° + 70° = 180°. Es ist spitzwinklig."]];
+function g32(lv){
+  if(lv===0){const D=pick(DREI),seiten=rnd(0,1)===1,r=seiten?D.s:D.w,L=seiten?SE:WI;
+    return Object.assign(mc(seiten?"Wie heißt das Dreieck <b>nach seinen Seiten</b>?":"Wie heißt das Dreieck <b>nach seinen Winkeln</b>?",DH.dr(D.p,D.o),r,andere(r,L),
+      seiten?"Gleich lange Seiten sind mit zwei Strichen markiert. → "+r:"Schau auf den größten Winkel. → "+r),{kat:r,key:"d"+DREI.indexOf(D)+seiten});}
+  if(lv===1){const D=pick(DREI),r=D.s+"-"+D.w,falsch=[];SE.forEach(s=>WI.forEach(w=>{const x=s+"-"+w;if(x!==r&&!(s==="gleichseitig"&&w!=="spitzwinklig"))falsch.push(x);}));
+    return Object.assign(mc("Gib beide Namen an: zuerst nach Seiten, dann nach Winkeln.",DH.dr(D.p,D.o),r,shuffle(falsch),`nach Seiten: ${D.s}, nach Winkeln: ${D.w} → ${r}`),{kat:r,key:"dd"+DREI.indexOf(D)});}
+  if(rnd(0,1)){const [t,w,e]=pick(GIBT);return{q:t,opts:["ja","nein"],ans:w?0:1,kat:w?"ja":"nein",ex:(w?"Ja. ":"Nein. ")+e};}
+  const a=pick([25,30,35,40,45,50,55,60]),b=pick([20,35,40,45,50,65,70]),c=180-a-b;
+  return{q:`Im Dreieck ist α = ${a}° und β = ${b}°. Berechne γ.`,felder:[{label:"γ =",ok:[[c,"°"]],fest:"°"}],kat:String(c),loes:`γ = ${c}°`,
+    tipp:x=>gleich(x[0],a+b)?"Das ist α + β. Ziehe beide Winkel von 180° ab.":"",
+    ex:`γ = 180° − ${a}° − ${b}° = ${c}° → Das Dreieck ist ${c>90||a>90||b>90?"stumpfwinklig":c===90?"rechtwinklig":"spitzwinklig"}.`};}
+/* 3-3 Flächeninhalt A = ½ · g · h */
+const MESSBLATT=[[6,3.5,2],[5,4,0],[4.5,3,7],[7,2.5,3],[4,4.5,1.5],[5.5,2,-2],[8,3,8],[3.5,5,5],[6.5,4,4],[3,3.5,4.5]]; /* g, h, Lage von C über AB (cm) */
+function bildFall(g,h,lage,gl,hl){const off=lage==="innen"?g*pick([.3,.4,.6]):lage==="seite"?0:g+pick([1.2,1.8,2.5]);
+  return DH.dr([[0,0],[g,0],[off,h]],lage==="seite"?{rw:"A",gl,hl,hs:"AC",s:18}:{h:true,gl,hl,s:18});}
+function flAufg(gT,hT,T,lage,o){o=o||{};const A=rund(gT*hT/2);
+  return{q:`Dreieck: Berechne den Flächeninhalt A${o.inT?` in ${QU(T)}`:""}.${o.sch?` Die schräge Seite ist ${L(o.sch,T)} lang.`:""}`,
+    svg:bildFall(Math.min(9,Math.max(3,gT>20?gT/10:gT)),Math.min(6,Math.max(2,hT>20?hT/10:hT)),lage,"g = "+(o.gd||L(gT,T)),"h = "+(o.hd||L(hT,T))),
+    felder:[{label:"A =",ok:[[A,QU(T)]],units:wahl(T,o.o2)}],kat:String(A),loes:`A = ${L(A,QU(T))}`,
+    tipp:x=>{const v=x[0];if(gleich(v,rund(gT*hT)))return"Das ist der Flächeninhalt des Parallelogramms. Ein Dreieck ist die Hälfte: A = ½ · g · h.";
+      if(o.sch&&(gleich(v,rund(gT*o.sch/2))||gleich(v,rund(gT*o.sch))))return"Die schräge Seite ist nicht die Höhe. Nimm g und h.";
+      if(o.roh&&gleich(v,o.roh))return"Erst gleiche Einheiten, dann rechnen!";return"";},
+    ex:`${o.vor||""}A = ${halb} · ${L(gT,T)} · ${L(hT,T)} = ${L(A,QU(T))}`};}
+function messAufg(papier){
+  if(papier){const n=rnd(1,10),[g,h,off]=MESSBLATT[n-1],A=rund(g*h/2);
+    return{q:`Nimm dein <b>Messblatt</b>. Zeichne bei Dreieck <b>Nr. ${n}</b> die Höhe von C ein, miss g und h und berechne A.`,key:"p"+n,
+      felder:[{label:"g =",ok:tolL(g,"cm"),fest:"cm"},{label:"h =",ok:tolL(h,"cm"),fest:"cm"},{label:"A =",ok:tolA(g,h,"cm²"),fest:"cm²"}],kat:"p"+n,
+      loes:`g = ${L(g,"cm")}, h = ${L(h,"cm")}, A = ${L(A,"cm²")}`,ex:`Dreieck Nr. ${n}: A = ${halb} · ${L(g,"cm")} · ${L(h,"cm")} = ${L(A,"cm²")}<br>Messungen bis 1 mm daneben zählen als richtig.`};}
+  const [g,h,off]=pick([[6,3,2],[7,2.5,5],[5,3.5,6.5],[4,3,0],[6.5,2,8],[5.5,4,-1.5]]),A=rund(g*h/2);
+  return{q:"Zeichne mit dem 📐 Geodreieck die Höhe von C ein (Mittellinie auf AB, Kante an C → „h einzeichnen“). Miss g = AB und h. Berechne A.",svg:DH.dr([[0,0],[g,0],[off,h]],{real:true}),key:"r"+g+h,
+    felder:[{label:"g =",ok:tolL(g,"cm"),fest:"cm"},{label:"h =",ok:tolL(h,"cm"),fest:"cm"},{label:"A =",ok:tolA(g,h,"cm²"),fest:"cm²"}],kat:"r"+g,
+    loes:`g = ${L(g,"cm")}, h = ${L(h,"cm")}, A = ${L(A,"cm²")}`,ex:`A = ${halb} · ${L(g,"cm")} · ${L(h,"cm")} = ${L(A,"cm²")}<br>Messungen bis 1 mm daneben zählen als richtig.`};}
+function fehltDreieck(o){const {T,ges,known,res}=o,A=rund(known*res/2),bek=ges==="h"?"g":"h";
+  return{q:`Dreieck: A = ${L(A,QU(T))}, ${bek} = ${L(known,T)}. Berechne ${ges==="h"?"die Höhe h":"die Grundseite g"}.`,
+    svg:bildFall(Math.min(8,ges==="g"?res:known),Math.min(5,ges==="h"?res:known),pick(["innen","seite","aussen"]),ges==="g"?"g = ?":"g = "+L(known,T),ges==="h"?"h = ?":"h = "+L(known,T)),
+    felder:[{label:ges+" =",ok:[[res,T]],units:wahl(T)}],kat:String(res),loes:`${ges} = ${L(res,T)}`,
+    tipp:x=>{const v=x[0];if(gleich(v,rund(A/known)))return"Denk an das ½: Ohne das ½ ist die Fläche doppelt so groß ("+L(2*A,QU(T))+").";
+      if(gleich(v,rund(2*A*known)))return"Dividiere statt zu multiplizieren.";return"";},
+    ex:`Ohne das ½: ${bek} · ${ges} = 2 · ${L(A,QU(T))} = ${L(2*A,QU(T))}<br>${ges} = ${L(2*A,QU(T))} : ${L(known,T)} = ${L(res,T)}`};}
+function g33(lv){
+  const lage=pick(["innen","seite","aussen"]);
+  if(lv===0){const T=pick(["cm","cm","m","dm","mm"]);let g=rnd(3,12),h=rnd(2,10);if((g*h)%2)h++;return flAufg(g,h,T,lage);}
+  if(lv===1){const t=rnd(0,9);
+    if(t<3){const T=pick(["cm","m"]),g=pick([2.5,4.5,3,5,6.5,7,1.5]),h=pick([2,4,3,5,1.2]);return flAufg(g,h,T,lage,{sch:lage==="seite"?null:rund(h+pick([1,1.5,2]))});}
+    if(t<6){const T=pick(["cm","m","dm"]),res=rnd(2,9),known=rnd(3,10);return fehltDreieck({T,ges:pick(["g","h"]),known:(known*res)%2?known+1:known,res});}
+    return messAufg(false);}
+  const t=rnd(0,9);
+  if(t<4){const [gv,gu,hv,hu,T]=pick([[1.2,"m",50,"cm","m"],[80,"cm",3,"dm","cm"],[2,"m",75,"cm","m"],[1.5,"m",40,"cm","m"],[60,"cm",0.5,"m","cm"],[4,"dm",15,"cm","cm"]]);
+    const gT=convL(gv,gu,T),hT=convL(hv,hu,T),vor=[[gv,gu,gT],[hv,hu,hT]].filter(z=>z[1]!==T).map(z=>`${L(z[0],z[1])} = ${L(z[2],T)}`).join("; ");
+    return flAufg(gT,hT,T,lage,{inT:true,gd:L(gv,gu),hd:L(hv,hu),o2:[gu,hu].find(u=>u!==T),roh:rund(gv*hv/2),vor:"Erst gleiche Einheiten: "+vor+"<br>"});}
+  if(t<7)return messAufg(true);
+  return messAufg(false);}
+/* 3-4 Sachaufgaben (5 pro Runde): Online-Shop wie 1-4 und 2-4 */
+const PROD3=[
+ {n:"Wimpelkette „Party“",p:"12,99 €",fA:"Wie viel Stoff hat ein Wimpel?",T:"cm",d0:[[20,25],[16,20],[24,30]],d1:[[17,22],[19,24],[21,26]],d2:[[0.2,"m",25,"cm"],[18,"cm",0.3,"m"]],x:["10 Wimpel an der Kette","Länge der Kette: 3 m","Lieferzeit: 2 Werktage","Material: Baumwolle"]},
+ {n:"Hundehalstuch „Bello“",p:"8,95 €",fA:"Wie groß ist das Tuch?",T:"cm",d0:[[50,20],[40,18],[60,24]],d1:[[45,22],[55,18],[38,25]],d2:[[0.5,"m",22,"cm"],[45,"cm",0.2,"m"]],x:["Für Hunde bis 20 kg","Waschbar bei 30 °C","Gewicht: 40 g","Farbe: Türkis"]},
+ {n:"Sitzkissen „Triangel“",p:"24,90 €",fA:"Wie groß ist die Sitzfläche?",T:"cm",d0:[[60,52],[50,44],[40,36]],d1:[[55,48],[45,39],[65,56]],d2:[[0.6,"m",52,"cm"],[50,"cm",0.4,"m"]],x:["Füllung: Schaumstoff","Dicke: 8 cm","Bezug abnehmbar","Lieferzeit: 3 Werktage"]},
+ {n:"Kletterwand-Platte „Peak“",p:"89,00 €",fA:"Wie groß ist die Platte?",T:"cm",d0:[[80,60],[90,50],[70,40]],d1:[[85,62],[75,48],[95,56]],d2:[[1.2,"m",80,"cm"],[90,"cm",0.6,"m"]],x:["Material: Multiplex","8 Löcher für Griffe","Gewicht: 6 kg","Belastbar bis 150 kg"]},
+ {n:"Zeltwand „Tipi“ (eine Seite)",p:"34,50 €",fA:"Wie viel Stoff hat eine Seitenwand?",T:"m",d0:[[2,2],[3,2],[2,3]],d1:[[1.6,2.5],[2.4,1.5],[1.8,2.2]],d2:[[160,"cm",2,"m"],[2,"m",180,"cm"]],x:["Wasserdicht","Mit 4 Heringen","Gewicht: 900 g","Farbe: Sand"]},
+ {n:"Eckregal-Brett „Corner“",p:"14,99 €",fA:"Wie groß ist die Ablagefläche?",T:"cm",d0:[[30,30],[50,25],[40,20]],d1:[[35,35],[45,22],[32,16]],d2:[[0.4,"m",20,"cm"],[30,"cm",0.3,"m"]],x:["Material: Eiche","Dicke: 1,8 cm","Mit Wandhalterung","Trägt bis 10 kg"]},
+ {n:"Fensterfolie „Prisma“",p:"6,49 €",fA:"Wie groß ist eine Folie?",T:"cm",d0:[[30,20],[24,18],[40,30]],d1:[[25,17],[35,22],[28,15]],d2:[[0.3,"m",25,"cm"],[40,"cm",0.2,"m"]],x:["3 Folien im Set","Lässt Licht durch","Wiederablösbar","Lieferzeit: 1 Werktag"]}];
+function g34(lv){
+  const P=pick(PROD3),T=P.T,typ=lv===0?"A":pick(["A","A","H"]);let gv,gu,hv,hu;
+  if(lv<2){const e=pick(lv===0?P.d0:P.d1);gv=e[0];hv=e[1];gu=hu=T;}else{const e=pick(P.d2);[gv,gu,hv,hu]=e;}
+  const gT=convL(gv,gu,T),hT=convL(hv,hu,T),A=rund(gT*hT/2),o2=[gu,hu].find(u=>u!==T);
+  const vor=[[gv,gu,gT],[hv,hu,hT]].filter(z=>z[1]!==T).map(z=>`${L(z[0],z[1])} = ${L(z[2],T)}`),erst=vor.length?"Erst gleiche Einheiten: "+vor.join("; ")+"<br>":"";
+  const extra=shuffle(P.x).slice(0,lv===0?0:lv===1?2:3),mG=`Grundseite: ${L(gv,gu)}`,mH=`Höhe: ${L(hv,hu)}`,ordne=l=>lv<2?l:shuffle(l);
+  const ueber=`Alle anderen Angaben (Preis${lv?", Gewicht, Lieferzeit …":""}) braucht man nicht.`;
+  if(typ==="A"){const q=`Form: Dreieck. Lies die Maße aus der Produktbeschreibung ab. ${P.fA}${lv===2?` Gib A in ${QU(T)} an.`:""}`;
+    return{q,svg:shop2(P,ordne(["Form: Dreieck",mG,mH,...extra]),q),felder:[{label:"A =",ok:[[A,QU(T)]],units:wahl(T,o2)}],kat:P.n,loes:`A = ${L(A,QU(T))}`,
+      tipp:x=>{const v=x[0];if(gleich(v,rund(gT*hT)))return"Beim Dreieck kommt das ½ dazu: A = ½ · g · h.";if(lv===2&&gleich(v,rund(gv*hv/2)))return"Erst gleiche Einheiten, dann rechnen!";return"";},
+      ex:`${erst}A = ${halb} · ${L(gT,T)} · ${L(hT,T)} = ${L(A,QU(T))}<br>${ueber}`};}
+  const kn=pick(["g","h"]),ges=kn==="g"?"h":"g",known=kn==="g"?gT:hT,res=ges==="h"?hT:gT;
+  const q=`Form: Dreieck. Lies die Angaben ab. Berechne die fehlende ${ges==="h"?"Höhe h":"Grundseite g"}${lv===2?` in ${T}`:""}.`;
+  return{q,svg:shop2(P,ordne(["Form: Dreieck",`Fläche: ${L(A,QU(T))}`,kn==="g"?mG:mH,...extra]),q),felder:[{label:ges+" =",ok:[[res,T]],units:wahl(T,o2)}],kat:P.n,loes:`${ges} = ${L(res,T)}`,
+    tipp:x=>gleich(x[0],rund(A/known))?"Denk an das ½: Ohne das ½ ist die Fläche doppelt so groß.":"",
+    ex:`${erst}Ohne das ½: g · h = 2 · ${L(A,QU(T))} = ${L(2*A,QU(T))}<br>${ges} = ${L(2*A,QU(T))} : ${L(known,T)} = ${L(res,T)}<br>${ueber}`};}
+
+const BOSS={id:"m",name:"Endgegner",gen:lv=>{const t=pick(ALLE);return t.gen(Math.min(2,1+lv));}};
+
+/* ================= Ansichten ================= */
+const app=document.getElementById("app"), zahlEl=document.getElementById("zahl"), zaehler=document.getElementById("zaehler"), mzahl=document.getElementById("mzahl"), muenzer=document.getElementById("muenzer");
+const STERN=(voll,g=1.2)=>voll?`<svg><use href="#st" fill="url(#gold)" stroke="#b86e00" stroke-width="${g}"/></svg>`:`<svg><use href="#st" fill="rgba(255,255,255,.12)" stroke="rgba(255,255,255,.5)" stroke-width="${g}"/></svg>`;
+const STERN_KARTE=voll=>voll?`<svg><use href="#st" fill="url(#gold)" stroke="#b86e00" stroke-width="1"/></svg>`:`<svg><use href="#st" fill="#f3ede2" stroke="#cbb89a" stroke-width="1"/></svg>`;
+const reihe=(n,f=STERN)=>[0,1,2].map(i=>f(i<n)).join("");
+const ruhig=window.matchMedia&&window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+(function laternen(){const h=document.getElementById("himmel");let x="",seed=11;const r=()=>(seed=(seed*9301+49297)%233280)/233280;
+  const F=["#ffd54a","#ffb35c","#5eead4","#ffffff"];
+  for(let i=0;i<26;i++)x+=`<circle cx="${(r()*100).toFixed(2)}%" cy="${(r()*100).toFixed(2)}%" r="${(r()*14+4).toFixed(1)}" fill="${F[Math.floor(r()*F.length)]}" opacity="${(r()*.08+.03).toFixed(2)}"/>`;
+  for(let i=0;i<40;i++)x+=`<circle cx="${(r()*100).toFixed(2)}%" cy="${(r()*100).toFixed(2)}%" r="${(r()*1.3+.4).toFixed(2)}" fill="#ffe7a8" opacity="${(r()*.4+.15).toFixed(2)}"/>`;h.innerHTML=x;})();
+
+let lehrerMsg="";
+function home(){
+  zahlEl.textContent=summe();mzahl.textContent=S.muenzen;
+  let h=`<p class="sub">Schaffe eine Runde mit ${RUNDE} Aufgaben und höchstens ${FEHLER_ERLAUBT} Fehlern (bei Sachaufgaben: 5 Aufgaben und höchstens 1 Fehler), dann bekommst du einen Stern. Ist deine erste Antwort falsch, hast du noch einen zweiten Versuch. Jeder Stern macht das Spiel schwerer. Der erste Stern öffnet das nächste Spiel. Hast du schon drei Sterne, gibt es Bonussterne, und ${BONUS_PRO_MUENZE} Bonussterne werden zu einem Credit.</p><div class="levels">`;
+  for(const L of LEVELS){
+    if(!L.spiele){h+=`<section class="lv zu"><div class="badge">🔒</div><div class="lvkopf"><div><div class="tag">LEVEL ${L.nr}</div><h2>${L.name}</h2></div><div class="klein">${L.info}</div></div></section>`;continue;}
+    const n=L.spiele.length, max=n*3, hat=L.spiele.reduce((a,s)=>a+stars(s.id),0);
+    let fertig=0;for(const s of L.spiele){if(stars(s.id)>=1)fertig++;else break;}
+    const fill=n>1?Math.min(fertig,n-1)/(n-1)*100:0;
+    h+=`<section class="lv ${L.spiele.some(offen)?"aktiv":"zu"}"><div class="badge">${L.nr}</div><div class="lvkopf"><div><div class="tag">LEVEL ${L.nr}</div><h2>${L.name}</h2></div>
+      <div class="zahl">${STERN(true)} ${hat} von ${max} Sternen</div></div><div class="bahn"><div class="linie"><i style="width:${fill}%"></i></div>`;
+    for(const s of L.spiele){const o=offen(s), st=stars(s.id), cls=!o?"zu":st>=1?"fertig":"jetzt";
+      h+=`<div class="node ${cls}"><button class="kreis" data-play="${s.id}" ${o?"":"disabled"} aria-label="${s.name}${o?"":" (gesperrt)"}">${o?s.nr:"🔒"}</button><b>${s.name}</b>
+        ${cls==="jetzt"?`<button class="btn" data-play="${s.id}">▶ Spielen</button>`:`<div class="sterne">${reihe(st)}</div>`}${(S.bonus[s.id]||0)?`<span class="bonus" title="Bonussterne">+${S.bonus[s.id]} Bonus</span>`:""}</div>`;}
+    h+=`</div></section>`;
+  }
+  const bo=bossOffen();
+  h+=`<section class="lv boss${bo?" aktiv":" zu"}"><div class="badge">${bo?"⚔":"🔒"}</div><div class="lvkopf"><div><div class="tag">FINALE</div><h2>Endgegner</h2><div class="klein">Aufgaben aus allen Leveln</div></div>
+    ${bo?`<div class="zahl">${STERN(true)} ${stars("m")} von 3 Sternen</div>`:`<div class="klein">${ALLE_GEBAUT?"":"kommt bald · "}erscheint, wenn jedes Spiel mindestens einen Stern hat</div>`}</div>
+    ${bo?`<div class="bossrow"><div class="sterne">${reihe(stars("m"))}</div>${(S.bonus.m||0)?`<span class="bonus">+${S.bonus.m} Bonus</span>`:""}<button class="btn gold" data-play="m">⚔ Kämpfen</button></div>`:""}</section>`;
+  h+=`<section class="lv master zu"><div class="badge">🔒</div><div class="lvkopf"><div><div class="tag">NACH DEM ENDGEGNER</div><h2>Master-Level</h2><div class="klein">Knobeleien für echte Profis</div></div>
+    <div class="klein">${MASTER_GEBAUT?"":"kommt bald · "}erscheint, wenn der Endgegner besiegt ist</div></div></section></div>`;
+  h+=`<details${lehrerMsg?" open":""}><summary>Für die Lehrkraft</summary><div class="lehrer">
+    <input type="text" id="code" placeholder="Lehrer-Code" autocomplete="off" aria-label="Lehrer-Code">
+    <button class="btn hell" id="codeBtn">Alle Spiele freischalten</button>
+    ${S.lehrer?`<button class="btn hell" id="sperr">Wieder sperren</button>`:""}
+    <span id="resetBox"><button class="btn hell" id="reset">Fortschritt löschen</button></span>
+    <span class="msg">${lehrerMsg}</span></div></details>`;
+  app.innerHTML=h;
+  app.querySelectorAll("[data-play]").forEach(b=>b.addEventListener("click",()=>start(b.dataset.play)));
+  document.getElementById("codeBtn").addEventListener("click",()=>{
+    const v=document.getElementById("code").value.trim().toUpperCase();
+    if(codeHash(v)===CODE_H){S.lehrer=true;save();lehrerMsg="Alle Spiele sind freigeschaltet.";}else lehrerMsg="Der Code stimmt nicht.";home();});
+  const sp=document.getElementById("sperr");if(sp)sp.addEventListener("click",()=>{S.lehrer=false;save();lehrerMsg="Die Spiele sind wieder gesperrt. Die Sterne bleiben erhalten.";home();});
+  document.getElementById("reset").addEventListener("click",()=>{
+    document.getElementById("resetBox").innerHTML=`<span class="msg">Wirklich alles löschen?</span> <button class="btn hell" id="resJa">Ja</button> <button class="btn hell" id="resNein">Nein</button>`;
+    document.getElementById("resJa").addEventListener("click",()=>{S={stars:{},bonus:{},topf:0,muenzen:0,lehrer:false};save();lehrerMsg="Der Fortschritt wurde gelöscht.";home();});
+    document.getElementById("resNein").addEventListener("click",home);});
+  window.scrollTo({top:0});
+}
+
+let R=null, letzte="";
+const schluessel=a=>a.key||a.q+"|"+(a.svg||"").replace(/<li>[^<]*<\/li>/g,"").replace(/ data-vor="[^"]*"/g,"")+"|"+(a.opts?a.opts.slice().sort().join("/"):a.loes);
+function start(id){
+  zahlEl.textContent=summe();
+  const spiel=id==="m"?BOSS:ALLE.find(t=>t.id===id);
+  const lv=Math.min(2,stars(id));
+  R={spiel,id,lv,n:spiel.runde||RUNDE,i:0,res:[],aufgaben:[]};
+  const seen=new Set();let versuche=0;
+  const kat=a=>a.kat||(a.opts?a.opts[a.ans]:a.q);
+  while(R.aufgaben.length<R.n){
+    const a=spiel.gen(lv,R.aufgaben.length), k=schluessel(a), n=R.aufgaben.length, vorher=n?schluessel(R.aufgaben[n-1]):letzte;
+    versuche++;
+    if(k===vorher)continue;                                   /* nie zweimal dieselbe Aufgabe hintereinander */
+    if(versuche<2000){
+      if(seen.has(k))continue;                                /* keine Wiederholung in der Runde */
+      if(n>=1&&spiel.runde&&kat(R.aufgaben[n-1])===kat(a))continue; /* Sachaufgaben: nicht zweimal dasselbe Produkt hintereinander */
+      if(n>=2&&kat(R.aufgaben[n-1])===kat(a)&&kat(R.aufgaben[n-2])===kat(a))continue; /* höchstens 2x dieselbe Lösung hintereinander */
+    }
+    seen.add(k);R.aufgaben.push(a);
+  }
+  letzte=schluessel(R.aufgaben[R.n-1]);
+  show();
+}
+const punkte=()=>`<div class="dots" aria-label="Fortschritt">${R.aufgaben.map((_,i)=>`<span class="dot ${R.res[i]===true?"ok":R.res[i]==="gelb"?"gelb":R.res[i]===false?"err":i===R.i?"now":""}"></span>`).join("")}</div>`;
+const fehlerAnzeige=()=>{const f=R.res.filter(x=>x===false).length;return `<span id="fehlz" class="fehlz${f>erlaubt(R.n)?" zuviel":""}">Fehler: ${f} (erlaubt: ${erlaubt(R.n)})</span>`;};
+function kopf(){
+  const name=R.id==="m"?"Endgegner":`Spiel ${R.spiel.nr}: ${R.spiel.name}`;
+  return `<div class="bar"><span class="titel">${name}<small>Schwierigkeit ${"★".repeat(R.lv+1)}</small></span>${fehlerAnzeige()}<button class="btn hell" id="abbr">Zur Übersicht</button></div>${punkte()}`;
+}
+function show(){
+  const a=R.aufgaben[R.i];R.versuch=0;
+  let h=kopf()+`<section class="card"><p class="frage">${a.q}</p>${a.svg?`<div class="fig" id="fig">${a.svg}</div>`:""}`;
+  if(a.opts)h+=`<div class="opts">${a.opts.map((o,i)=>`<button data-o="${i}">${o}</button>`).join("")}</div>`;
+  else h+=`<div class="form">${a.felder.map((f,k)=>`<div class="glx"><span>${f.label}</span>${fx(k,f.label)}${f.units?`<span class="ewahl" data-e="${k}" role="group" aria-label="Einheit wählen">${f.units.map(u=>`<button type="button" class="eb" data-u="${u}">${u}</button>`).join("")}</span>`:`<span class="einheit">${f.fest||""}</span>`}</div>`).join("")}<div><button class="btn" type="button" id="pruefBtn">Prüfen</button></div></div>`;
+  h+=`<div id="fb"></div></section>`;
+  app.innerHTML=h;
+  app.querySelectorAll("[data-vor]").forEach(b=>b.addEventListener("click",()=>vorlesen(b.getAttribute("data-vor"))));
+  document.getElementById("abbr").addEventListener("click",home);
+  const hinweis=(extra)=>{document.getElementById("fb").innerHTML=`<div class="fb hinweis">Prüfe noch einmal! <span>Du hast noch einen zweiten Versuch.${extra?" "+extra:""}</span></div>`;};
+  if(a.opts){app.querySelectorAll("[data-o]").forEach(b=>b.addEventListener("click",()=>{
+    const k=+b.dataset.o;
+    if(k!==a.ans&&R.versuch===0){R.versuch=1;b.classList.add("gelb");b.disabled=true;hinweis();return;}
+    app.querySelectorAll("[data-o]").forEach(x=>{x.disabled=true;x.classList.remove("gelb");if(+x.dataset.o===a.ans)x.classList.add("richtig");});
+    if(k!==a.ans)b.classList.add("falsch");feedback(k===a.ans,a);}));return;}
+  const ins=[...app.querySelectorAll(".fx")], btnP=document.getElementById("pruefBtn");ins[0].focus();
+  const gruppe=k=>app.querySelector(`.ewahl[data-e="${k}"]`);
+  app.querySelectorAll(".eb").forEach(b=>b.addEventListener("click",()=>{const g=b.parentElement;if(g.dataset.zu)return;
+    g.querySelectorAll(".eb").forEach(x=>x.classList.toggle("an",x===b));g.classList.remove("gelb");}));
+  ins.forEach(x=>x.addEventListener("input",()=>x.classList.remove("gelb")));
+  const pruef=()=>{
+    const v=ins.map(x=>x.value), n=v.map(zahl), us=a.felder.map((f,k)=>{if(!f.units)return f.fest;const s=gruppe(k).querySelector(".eb.an");return s?s.dataset.u:null;});
+    if(v.some(x=>!x.trim())||n.some(isNaN)||us.some(u=>u==null)){
+      document.getElementById("fb").innerHTML=`<div class="fb hinweis">Fülle zuerst alle Felder aus${a.felder.some(f=>f.units)?" und wähle jeweils die Einheit":""}.</div>`;return;}
+    const r=a.felder.map((f,k)=>f.ok.some(([z,u])=>gleich(n[k],z)&&u===us[k])), ok=r.every(Boolean);
+    if(!ok&&R.versuch===0){R.versuch=1;
+      ins.forEach((x,k)=>{x.classList.toggle("gelb",!r[k]);const g=gruppe(k);if(g)g.classList.toggle("gelb",!r[k]);});
+      const t=(a.tipp&&a.tipp(n,us,r))||a.felder.map((f,k)=>r[k]?"":einhTipp(f,n[k],us[k])).find(Boolean)||"";
+      hinweis(t);return;}
+    ins.forEach((x,k)=>{x.disabled=true;x.classList.remove("gelb");x.classList.add(r[k]?"gut":"schlecht");
+      const g=gruppe(k);if(g){g.dataset.zu="1";g.classList.remove("gelb");g.classList.add(r[k]?"gut":"schlecht");g.querySelectorAll(".eb").forEach(b=>b.disabled=true);}});
+    btnP.disabled=true;feedback(ok,a);};
+  btnP.addEventListener("click",pruef);ins.forEach(x=>x.addEventListener("keydown",ev=>{if(ev.key==="Enter"){ev.preventDefault();pruef();}}));
+}
+function feedback(ok,a){
+  R.res[R.i]=ok?(R.versuch?"gelb":true):false;
+  document.getElementById("fb").innerHTML=`<div class="fb ${ok?"ok":"err"}">${ok?(R.versuch?"Richtig – im zweiten Versuch!":"Richtig!"):"Leider falsch."+(a.loes?` Richtig ist: ${a.loes}`:a.opts?` Richtig ist: ${a.opts[a.ans]}`:"")}<span class="ex">${a.ex}</span></div>
+    <div class="row" style="margin-top:12px"><button class="btn" id="weiter">${R.i<R.n-1?"Weiter ▶":"Zum Ergebnis ▶"}</button></div>`;
+  app.querySelector(".dots").outerHTML=punkte();
+  const fz2=document.getElementById("fehlz");if(fz2)fz2.outerHTML=fehlerAnzeige();
+  const w=document.getElementById("weiter");w.focus();
+  w.addEventListener("click",()=>{R.i++;R.i<R.n?show():ende();});
+}
+function geschafftText(){const f=R.res.filter(x=>x===false).length,z=R.res.filter(x=>x==="gelb").length;
+  const zt=z?`${z} ${z===1?"Zweitversuch":"Zweitversuchen"}`:"";
+  if(!f&&!z)return "Fehlerfrei!";
+  if(!f)return `Geschafft ohne Fehler mit ${zt}!`;
+  return `Geschafft mit ${f} ${f===1?"Fehler":"Fehlern"}${z?" und "+zt:""}!`;}
+function ende(){
+  const richtig=R.res.filter(x=>x).length, fehler=R.n-richtig, geschafft=fehler<=erlaubt(R.n);
+  const vorherOffen=ALLE.filter(offen).length, bossVorher=bossOffen(), alt=summe();
+  let neuStern=false,bonus=false,neueMuenze=false;
+  if(geschafft&&stars(R.id)<3){S.stars[R.id]=stars(R.id)+1;neuStern=true;save();}
+  else if(geschafft){S.bonus[R.id]=(S.bonus[R.id]||0)+1;S.topf++;bonus=true;
+    if(S.topf>=BONUS_PRO_MUENZE){S.topf-=BONUS_PRO_MUENZE;S.muenzen++;neueMuenze=true;}save();}
+  const neuSpiel=ALLE.filter(offen).length>vorherOffen, neuBoss=!bossVorher&&bossOffen();
+  let txt;
+  if(geschafft)txt=neuStern?(geschafftText()+" Du bekommst einen Stern."):(neueMuenze?"Bonusstern! Fünf Bonussterne sind voll: Du bekommst einen Credit!":"Bonusstern! Sammle weiter für den nächsten Credit.");
+  else txt=`${richtig} von ${R.n} richtig. Mit höchstens ${erlaubt(R.n)===1?"einem Fehler":erlaubt(R.n)+" Fehlern"} bekommst du einen Stern. Versuch es gleich noch einmal!`;
+  const banner=neuBoss?`<div class="banner">⚔ Der Endgegner ist erschienen!</div>`:neuSpiel?`<div class="banner">🔓 Ein neues Spiel ist freigeschaltet!</div>`:"";
+  const s=stars(R.id), zeigt=neuStern?s-1:s;
+  app.innerHTML=kopf()+`<section class="card ende"><div class="gross" id="gross">${reihe(zeigt,STERN_KARTE)}</div><p class="frage">${txt}</p>${bonus?`<div class="topf" aria-label="Bonussterne bis zum nächsten Credit">${neueMuenze?"":Array.from({length:BONUS_PRO_MUENZE},(_,i)=>`<i class="${i<S.topf?"voll":""}"></i>`).join("")} <svg viewBox="0 0 300 300"><use href="#credit"/></svg></div>`:""}${banner}
+    <div class="row"><button class="btn" id="noch">${neuStern&&s<3?"Nächste Runde (schwerer) ▶":"Noch eine Runde ▶"}</button><button class="btn hell" id="heim" style="color:#3b2412;background:#f3ede2;box-shadow:0 5px 0 #cbb89a">Zur Übersicht</button></div></section>`;
+  document.getElementById("abbr").addEventListener("click",home);
+  document.getElementById("noch").addEventListener("click",()=>start(R.id));
+  document.getElementById("heim").addEventListener("click",home);
+  zahlEl.textContent=alt;mzahl.textContent=S.muenzen-(neueMuenze?1:0);
+  if(neueMuenze)muenzFlug(()=>{mzahl.textContent=S.muenzen;muenzer.classList.add("puls");setTimeout(()=>muenzer.classList.remove("puls"),450);});
+  if(neuStern)sternFlug(()=>{const gr=document.getElementById("gross");if(gr)gr.innerHTML=reihe(s,STERN_KARTE);zahlEl.textContent=summe();
+    zaehler.classList.add("puls");setTimeout(()=>zaehler.classList.remove("puls"),450);});
+}
+function muenzFlug(fertig){
+  if(ruhig||!document.body.animate){fertig();return;}
+  const box=document.createElement("div");box.className="mflug";box.innerHTML=`<svg viewBox="0 0 300 300"><use href="#credit"/></svg>`;document.body.appendChild(box);
+  const coin=box.firstChild;
+  for(let i=0;i<22;i++){const g=document.createElement("div");g.className="glitzer";g.style.left="50%";g.style.top="45%";document.body.appendChild(g);
+    const w=i/22*Math.PI*2, d=130+Math.random()*110;
+    g.animate([{transform:"translate(-50%,-50%) scale(1)",opacity:1},{transform:`translate(calc(-50% + ${Math.cos(w)*d}px),calc(-50% + ${Math.sin(w)*d}px)) scale(.2)`,opacity:0}],{duration:1000,delay:300,easing:"cubic-bezier(.2,.7,.3,1)"}).onfinish=()=>g.remove();}
+  box.animate([{transform:"translateY(-60vh) scale(.4)"},{transform:"translateY(0) scale(1.15)",offset:.75},{transform:"translateY(0) scale(1)"}],{duration:700,easing:"cubic-bezier(.3,1.4,.5,1)",fill:"forwards"});
+  coin.animate([{transform:"rotateY(0deg)"},{transform:"rotateY(1080deg)"}],{duration:1700,easing:"cubic-bezier(.2,.6,.3,1)",fill:"forwards"}).onfinish=()=>setTimeout(()=>{
+    const z=muenzer.getBoundingClientRect(), b=box.getBoundingClientRect();
+    const dx=z.left+z.width*0.2-(b.left+b.width/2), dy=z.top+z.height/2-(b.top+b.height/2);
+    box.animate([{transform:"translate(0,0) scale(1)"},{transform:`translate(${dx}px,${dy}px) scale(.15)`}],{duration:850,easing:"cubic-bezier(.5,0,.2,1)",fill:"forwards"}).onfinish=()=>{box.remove();fertig();};
+  },250);
+}
+function sternFlug(fertig){
+  if(ruhig||!document.body.animate){fertig();return;}
+  const st=document.createElementNS("http://www.w3.org/2000/svg","svg");st.setAttribute("class","flug");st.setAttribute("viewBox","0 0 24 24");
+  st.innerHTML=`<use href="#st" fill="url(#gold)" stroke="#fff6c8" stroke-width=".6"/>`;document.body.appendChild(st);
+  for(let i=0;i<18;i++){const g=document.createElement("div");g.className="glitzer";g.style.left="50%";g.style.top="45%";document.body.appendChild(g);
+    const w=i/18*Math.PI*2, d=120+Math.random()*90;
+    g.animate([{transform:"translate(-50%,-50%) scale(1)",opacity:1},{transform:`translate(calc(-50% + ${Math.cos(w)*d}px),calc(-50% + ${Math.sin(w)*d}px)) scale(.2)`,opacity:0}],{duration:900,delay:250,easing:"cubic-bezier(.2,.7,.3,1)"}).onfinish=()=>g.remove();}
+  const a1=st.animate([{transform:"scale(0) rotate(-180deg)",opacity:0},{transform:"scale(1.35) rotate(20deg)",opacity:1,offset:.6},{transform:"scale(1) rotate(0deg)",opacity:1}],{duration:800,easing:"ease-out",fill:"forwards"});
+  a1.onfinish=()=>setTimeout(()=>{
+    const z=zaehler.getBoundingClientRect(), s=st.getBoundingClientRect();
+    const dx=z.left+z.width*0.18-(s.left+s.width/2), dy=z.top+z.height/2-(s.top+s.height/2);
+    st.animate([{transform:"translate(0,0) scale(1) rotate(0deg)"},{transform:`translate(${dx}px,${dy}px) scale(.18) rotate(360deg)`}],{duration:850,easing:"cubic-bezier(.5,0,.2,1)",fill:"forwards"}).onfinish=()=>{st.remove();fertig();};
+  },350);
+}
+home();
+})();
+</script>
+
+<script>/* ===== Geodreieck (frei beweglich, drehbar, rastet an Linien ein, 0 auf dem Scheitel) ===== */
+(()=>{
+const MM=3.4,CM=34,L=8.5*CM,R=0.66*L,NS='http://www.w3.org/2000/svg';
+const $=(s,r=document)=>r.querySelector(s),$$=(s,r=document)=>[...r.querySelectorAll(s)];
+const add=(a,b)=>({x:a.x+b.x,y:a.y+b.y}),sub=(a,b)=>({x:a.x-b.x,y:a.y-b.y}),mul=(a,k)=>({x:a.x*k,y:a.y*k}),
+  dot=(a,b)=>a.x*b.x+a.y*b.y,cross=(a,b)=>a.x*b.y-a.y*b.x,len=a=>Math.hypot(a.x,a.y),unit=a=>{const l=len(a)||1;return{x:a.x/l,y:a.y/l}},
+  rad=d=>d*Math.PI/180,deg=r=>r*180/Math.PI,d180=(a,b)=>{let d=((a-b)%180+180)%180;return Math.min(d,180-d)},
+  near180=(a,t)=>{let x=t;while(x-a>90)x-=180;while(a-x>90)x+=180;return x};
+const ov=document.createElementNS(NS,'svg');ov.id='geoov';document.body.appendChild(ov);
+const LG=document.createElementNS(NS,'g'),GG=document.createElementNS(NS,'g');ov.append(LG,GG);
+const st=document.createElement('style');st.textContent=`#geoov{position:absolute;left:0;top:0;pointer-events:none;z-index:9;overflow:visible}
+#geoov .grip{pointer-events:auto;cursor:move;touch-action:none}#geoov .knopf{pointer-events:auto;cursor:grab;touch-action:none}
+.geohint{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:20;background:#fff;border:2px solid #0a6e6e;border-radius:10px;padding:8px 14px;font:bold 17px Arial,sans-serif;display:none;gap:10px;align-items:center;box-shadow:0 4px 14px rgba(0,0,0,.2)}
+.geohint.on{display:flex}.geohint button{font:inherit;font-size:16px;border:2px solid #C2410C;color:#C2410C;background:#fff;border-radius:8px;padding:4px 10px;cursor:pointer}
+.geofix{position:fixed;right:14px;bottom:14px;z-index:21;font:bold 17px Arial,sans-serif;border:2px solid #0a6e6e;background:#fff;color:#0a6e6e;border-radius:12px;padding:10px 14px;cursor:pointer;box-shadow:0 4px 12px rgba(0,0,0,.2)}.geofix.an{background:#0a6e6e;color:#fff}@media print{#geoov,.geohint{display:none!important}}`;
+document.head.appendChild(st);
+const hint=document.createElement('div');hint.className='geohint';hint.innerHTML='<span id="geotxt"></span><button type="button" id="geoh">✏️ h einzeichnen</button><button type="button" id="geohx">h löschen</button>';document.body.appendChild(hint);
+const btn=document.createElement('button');btn.type='button';btn.textContent='📐 Geodreieck';btn.id='geobtn';btn.className='geofix';document.body.appendChild(btn);
+let on=false,g={x:300,y:300,a:0,rx:300,ry:300,ra:0,snap:null,V:null,F:null},drag=null;const linien={};
+const pid=()=>'t'+(document.querySelector('#app .frage')||{}).textContent;
+function pageXY(svg,x,y){const m=svg.getScreenCTM();return{x:m.a*x+m.c*y+m.e+scrollX,y:m.b*x+m.d*y+m.f+scrollY}}
+function segs(){const S=[],V=[];
+  for(const svg of $$('#app svg.mess')){
+    if(!svg.getScreenCTM())continue;
+    for(const l of svg.querySelectorAll('line')){const p=pageXY(svg,+l.getAttribute('x1'),+l.getAttribute('y1')),q=pageXY(svg,+l.getAttribute('x2'),+l.getAttribute('y2'));if(len(sub(q,p))>20){S.push({p,q,d:unit(sub(q,p))});V.push(p,q)}}
+    for(const pg of svg.querySelectorAll('polygon')){const P=pg.getAttribute('points').trim().split(/\s+/).map(s=>s.split(',').map(Number)).map(([x,y])=>pageXY(svg,x,y));
+      P.forEach((p,i)=>{const q=P[(i+1)%P.length];S.push({p,q,d:unit(sub(q,p))});V.push(p)})}}
+  for(const h of linien[pid()]||[]){S.push({p:h.p,q:h.q,d:unit(sub(h.q,h.p))});V.push(h.p,h.q)}
+  return{S,V}}
+function magnet(){
+  g.x=g.rx;g.y=g.ry;g.a=g.ra;g.snap=null;g.V=null;const C={x:g.rx,y:g.ry};let best=null;const {S,V}=segs();
+  for(const s of S){const ang=deg(Math.atan2(s.d.y,s.d.x)),dl=Math.abs(cross(sub(C,s.p),s.d));if(dl>16)continue;
+    if(d180(g.ra,ang)<6&&(!best||dl<best.dl))best={dl,k:'kante',s,ta:near180(g.ra,ang)};
+    if(d180(g.ra+90,ang)<6&&(!best||dl<best.dl))best={dl,k:'mitte',s,ta:near180(g.ra,ang-90)};}
+  if(!best)return;let c=add(best.s.p,mul(best.s.d,dot(sub(C,best.s.p),best.s.d)));const s=best.s;
+  if(best.k==='kante'){for(const v of V){if(Math.abs(cross(sub(v,s.p),s.d))>3)continue;const off=dot(sub(v,c),s.d);if(Math.abs(off)<16){c=add(c,mul(s.d,off));best.k='null';break}}}
+  else{for(const v of V){if(Math.abs(cross(sub(v,s.p),s.d))<3)continue;const off=dot(sub(v,c),s.d);if(Math.abs(off)<16){c=add(c,mul(s.d,off));best.k='hoehe';g.V=v;g.F=c;break}}}
+  g.x=c.x;g.y=c.y;g.a=best.ta;g.snap=best.k;}
+function el(t,a,p,txt){if(t==='text'&&p!==LG&&a.x!=null)a.transform=`rotate(${-g.a} ${a.x} ${a.y-4})`;const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(txt!=null)e.textContent=txt;p.appendChild(e);return e}
+function groesse(){ov.setAttribute('width',document.documentElement.scrollWidth);ov.setAttribute('height',document.documentElement.scrollHeight)}
+function zeichne(){
+  groesse();LG.innerHTML='';GG.innerHTML='';
+  for(const h of linien[pid()]||[])el('line',{x1:h.p.x,y1:h.p.y,x2:h.q.x,y2:h.q.y,stroke:'#C2410C','stroke-width':3,'stroke-dasharray':'9 6'},LG);
+  btn.classList.toggle('an',on);
+  if(!on){hint.classList.remove('on');return}
+  const G=el('g',{transform:`translate(${g.x} ${g.y}) rotate(${g.a})`},GG);
+  el('polygon',{class:'grip',points:`${-L},0 ${L},0 0,${L}`,fill:'rgba(190,232,240,0.55)',stroke:'#0a6e6e','stroke-width':2},G);
+  const kante=g.snap==='kante'||g.snap==='null',mitte=g.snap==='mitte'||g.snap==='hoehe';
+  for(let k=-80;k<=80;k++){const x=k*MM,l=k%10===0?16:k%5===0?11:6;el('line',{x1:x,y1:0,x2:x,y2:l,stroke:'#0b3b3b','stroke-width':k%10===0?1.4:.8},G);
+    if(k%10===0)el('text',{x,y:31,'text-anchor':'middle','font-size':14,fill:'#0b3b3b','font-family':'Arial'},G,String(Math.abs(k/10)));}
+  el('text',{x:4.5*CM,y:48,'text-anchor':'middle','font-size':12,fill:'#0b3b3b','font-family':'Arial'},G,'cm');
+  el('path',{d:`M${R} 0 A${R} ${R} 0 0 1 ${-R} 0`,fill:'none',stroke:'rgba(10,110,110,.6)'},G);
+  for(let t=5;t<180;t+=5){const c=Math.cos(rad(t)),s=Math.sin(rad(t)),l=t%10===0?13:7;el('line',{x1:R*c,y1:R*s,x2:(R-l)*c,y2:(R-l)*s,stroke:'#0b3b3b','stroke-width':1},G);
+    if(t%10===0&&t!==90){el('text',{x:(R-24)*c,y:(R-24)*s+4,'text-anchor':'middle','font-size':10,fill:'#0b3b3b','font-family':'Arial'},G,String(180-t));
+      el('text',{x:(R-40)*c,y:(R-40)*s+4,'text-anchor':'middle','font-size':9,fill:'#7a1d00','font-family':'Arial'},G,String(t));}}
+  el('text',{x:0,y:R-26,'text-anchor':'middle','font-size':11,fill:'#0b3b3b','font-family':'Arial'},G,'90');
+  el('line',{x1:0,y1:0,x2:0,y2:L-70,stroke:mitte?'#2e7d32':'#0b3b3b','stroke-width':mitte?4:1.5},G);
+  if(kante)el('line',{x1:-L,y1:0,x2:L,y2:0,stroke:'#2e7d32','stroke-width':4},G);
+  el('circle',{cx:0,cy:0,r:4,fill:'#C62828'},G);
+  el('circle',{class:'knopf',cx:0,cy:L-42,r:20,fill:'#0f9e9e',stroke:'#fff','stroke-width':3},G);
+  el('text',{x:0,y:L-34,'text-anchor':'middle','font-size':22,fill:'#fff','pointer-events':'none'},G,'↻');
+  const t={null:'0 liegt auf dem Scheitel – jetzt ablesen!',kante:'Die Kante liegt an. Schiebe die 0 auf die Ecke.',mitte:'Mittellinie auf der Grundseite – schiebe, bis die Kante die Ecke berührt.',hoehe:'Rechter Winkel! Jetzt kannst du h einzeichnen.'}[g.snap];
+  hint.classList.toggle('on',!!t||(linien[pid()]||[]).length>0);$('#geotxt').textContent=t||'Ziehe das Geodreieck an eine Linie.';
+  $('#geoh').style.display=g.snap==='hoehe'?'':'none';$('#geohx').style.display=(linien[pid()]||[]).length?'':'none';}
+function pt(e){return{x:e.pageX,y:e.pageY}}
+ov.addEventListener('pointerdown',e=>{const k=e.target.classList;if(!k.contains('grip')&&!k.contains('knopf'))return;e.preventDefault();ov.setPointerCapture(e.pointerId);
+  const p=pt(e);drag=k.contains('knopf')?{t:'rot',s:deg(Math.atan2(p.y-g.y,p.x-g.x)),a0:g.a}:{t:'mov',o:sub({x:g.x,y:g.y},p)};g.rx=g.x;g.ry=g.y;g.ra=g.a;});
+ov.addEventListener('pointermove',e=>{if(!drag)return;const p=pt(e);
+  if(drag.t==='mov'){g.rx=p.x+drag.o.x;g.ry=p.y+drag.o.y}else{g.ra=drag.a0+deg(Math.atan2(p.y-g.y,p.x-g.x))-drag.s;g.rx=g.x;g.ry=g.y}
+  magnet();zeichne();});
+ov.addEventListener('pointerup',()=>{drag=null});
+btn.addEventListener('click',()=>{on=!on;if(on){const r=$('#app svg.mess')||$('#app');const b=r.getBoundingClientRect();g.rx=g.x=b.left+scrollX+b.width/2;g.ry=g.y=b.top+scrollY+40;g.ra=g.a=0;g.snap=null}zeichne();});
+$('#geoh').addEventListener('click',()=>{if(g.snap!=='hoehe')return;(linien[pid()]=linien[pid()]||[]).push({p:{...g.V},q:{...g.F}});zeichne();});
+$('#geohx').addEventListener('click',()=>{linien[pid()]=[];zeichne();});
+new MutationObserver(()=>{const da=!!document.querySelector('#app svg.mess');btn.style.display=da?'':'none';if(!da&&on){on=false;zeichne();}}).observe(document.getElementById('app'),{childList:true,subtree:true});btn.style.display='none';
+addEventListener('resize',()=>{for(const k in linien)linien[k]=[];zeichne()});
+
+zeichne();
+})();
+</script><!-- Mathe-Base: Zurück-Knopf zur Trainer-Klassenseite -->
+<style id="mb-zurueck-style">
+#mb-leiste{display:block;width:100%;box-sizing:border-box;padding:8px 10px 6px;margin:0;text-align:left;position:relative;z-index:50}
+#mb-zurueck{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;background:rgba(10,8,40,.9);color:#fff !important;border:1.5px solid rgba(94,228,255,.85);box-shadow:0 0 10px rgba(94,228,255,.45);font:700 14px/1 "Segoe UI",system-ui,-apple-system,sans-serif;text-decoration:none !important;letter-spacing:0;text-transform:none;cursor:pointer}
+#mb-zurueck:hover{background:rgba(30,30,90,.95)}
+#mb-zurueck:focus-visible{outline:3px solid #ffd166;outline-offset:3px}
+@media print{#mb-leiste{display:none}}
+</style>
+<script id="mb-zurueck-script">
+(function(){
+  var K='mbTrainerKlasse', ziel='https://frauklugmann.github.io/trainer/';
+  try{
+    var m=(document.referrer||'').match(/^https:\/\/frauklugmann\.github\.io\/trainer\/(klasse\d+|oberstufe)\/?/);
+    if(m){sessionStorage.setItem(K,'https://frauklugmann.github.io/trainer/'+m[1]+'/');}
+    var s=sessionStorage.getItem(K); if(s){ziel=s;}
+  }catch(e){}
+  function einbauen(){
+    if(document.getElementById('mb-leiste')) return;
+    var leiste=document.createElement('div'); leiste.id='mb-leiste';
+    var a=document.createElement('a'); a.id='mb-zurueck'; a.href=ziel;
+    a.setAttribute('aria-label','Zurück zur Trainer-Übersicht deiner Klasse');
+    a.textContent='← Zurück';
+    leiste.appendChild(a);
+    document.body.insertBefore(leiste, document.body.firstChild);
+  }
+  if(document.body){einbauen();}else{document.addEventListener('DOMContentLoaded',einbauen);}
+})();
+</script>
+</body></html>
