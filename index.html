@@ -150,6 +150,7 @@ input[type=text]{font:inherit;border:2px solid var(--glasrand);background:rgba(0
   .levels{padding-left:0}.levels:before{display:none}.lv .badge{position:static;width:44px;height:44px;font-size:1.1rem;margin-bottom:8px}
   .kreis{width:72px;height:72px;font-size:1.3rem}}
 @media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+.vor2{font:inherit;cursor:pointer;border:2px solid #0d7f73;background:#fff;color:#0d7f73;border-radius:999px;padding:2px 10px;font-weight:700;font-size:.9rem}
 </style>
 </head><body>
 <svg id="himmel" aria-hidden="true"></svg>
@@ -209,19 +210,28 @@ const LEVELS=[
     {id:"3b",nr:"3-2",name:"Dreiecke einteilen",gen:g32},
     {id:"3c",nr:"3-3",name:"Flächeninhalt",gen:g33},
     {id:"3d",nr:"3-4",name:"Sachaufgaben",gen:g34,runde:5}]},
-  {nr:4,name:"Das Trapez",info:"kommt bald"},
-  {nr:5,name:"Zusammengesetzte Figuren",info:"kommt bald"}];
+  {nr:4,name:"Das Trapez",spiele:[
+    {id:"4a",nr:"4-1",name:"Trapez und Höhe",gen:g41},
+    {id:"4b",nr:"4-2",name:"Fläche und Umfang",gen:g42},
+    {id:"4c",nr:"4-3",name:"Sachaufgaben",gen:g43,runde:5},
+    {id:"4d",nr:"4-4 ★",name:"Raute und Drachen",gen:g44,opt:true,hinweis:"Nur fürs LH 1 · freiwillig"}]},
+  {nr:5,name:"Zusammengesetzte Figuren",spiele:[
+    {id:"5a",nr:"5-1",name:"Umfang",gen:g51},
+    {id:"5b",nr:"5-2",name:"Zerlegen",gen:g52},
+    {id:"5c",nr:"5-3",name:"Ergänzen",gen:g53},
+    {id:"5d",nr:"5-4",name:"Sachaufgaben",gen:g54,runde:5}]}];
 const ALLE=LEVELS.flatMap(l=>l.spiele||[]);
 const ALLE_GEBAUT=LEVELS.every(l=>l.spiele);
-const MASTER_GEBAUT=false;
+const MASTER_GEBAUT=true;
+const masterOffen=()=>S.lehrer||stars("m")>=1;
 const BONUS_PRO_MUENZE=5;
 let S={stars:{},bonus:{},topf:0,muenzen:0,lehrer:false};
 try{const r=localStorage.getItem(KEY);if(r)S=Object.assign(S,JSON.parse(r));}catch(e){}
 S.bonus=S.bonus||{};S.topf=S.topf||0;S.muenzen=S.muenzen||0;
 function save(){try{localStorage.setItem(KEY,JSON.stringify(S));}catch(e){}}
 const stars=id=>S.stars[id]||0;
-function offen(sp){if(S.lehrer)return true;const i=ALLE.findIndex(t=>t.id===sp.id);return ALLE.slice(0,i).every(t=>stars(t.id)>=1);}
-const bossOffen=()=>ALLE_GEBAUT&&(S.lehrer||ALLE.every(t=>stars(t.id)>=1));
+function offen(sp){if(S.lehrer)return true;const i=sp.opt?ALLE.findIndex(t=>t.id[0]===sp.id[0]):ALLE.findIndex(t=>t.id===sp.id);return ALLE.slice(0,i).filter(t=>!t.opt).every(t=>stars(t.id)>=1);}
+const bossOffen=()=>ALLE_GEBAUT&&(S.lehrer||ALLE.filter(t=>!t.opt).every(t=>stars(t.id)>=1));
 const summe=()=>Object.values(S.stars).reduce((a,b)=>a+b,0);
 
 /* ================= Hilfen ================= */
@@ -979,7 +989,365 @@ function g34(lv){
     tipp:x=>gleich(x[0],rund(A/known))?"Denk an das ½: Ohne das ½ ist die Fläche doppelt so groß.":"",
     ex:`${erst}Ohne das ½: g · h = 2 · ${L(A,QU(T))} = ${L(2*A,QU(T))}<br>${ges} = ${L(2*A,QU(T))} : ${L(known,T)} = ${L(res,T)}<br>${ueber}`};}
 
-const BOSS={id:"m",name:"Endgegner",gen:lv=>{const t=pick(ALLE);return t.gen(Math.min(2,1+lv));}};
+/* ================= Level 4 · Das Trapez (Zusatz LH 1: Raute und Drachenviereck) ================= */
+const TZ=(()=>{
+const BL="#1565C0",OR="#C2410C";
+const ein=d=>{const l=Math.hypot(d[0],d[1])||1;return [d[0]/l,d[1]/l];};
+const f1=x=>(+x).toFixed(1);
+const lin=(P,Q,o)=>{o=o||{};return `<line x1="${f1(P[0])}" y1="${f1(P[1])}" x2="${f1(Q[0])}" y2="${f1(Q[1])}" stroke="${o.st||"#111"}" stroke-width="${o.sw||2.5}"${o.dash?` stroke-dasharray="${o.dash}"`:""} stroke-linecap="round"/>`;};
+function rwB(P,u,v,r){r=r||12;u=ein(u);v=ein(v);const p1=[P[0]+u[0]*r,P[1]+u[1]*r],p2=[P[0]+v[0]*r,P[1]+v[1]*r],sw=(u[0]*v[1]-u[1]*v[0])>0?1:0,m=[P[0]+(u[0]+v[0])*r*.42,P[1]+(u[1]+v[1])*r*.42];
+  return `<path d="M${f1(p1[0])} ${f1(p1[1])} A${r} ${r} 0 0 ${sw} ${f1(p2[0])} ${f1(p2[1])}" fill="none" stroke="#111" stroke-width="1.6"/><circle cx="${f1(m[0])}" cy="${f1(m[1])}" r="2" fill="#111"/>`;}
+const T=(x,y,t,o)=>{o=o||{};return `<text x="${f1(x)}" y="${f1(y)}" font-family="Arial" font-size="${o.fs||18}" font-weight="700" text-anchor="${o.an||"middle"}" dominant-baseline="central" fill="${o.fill||"#111"}" stroke="#fff" stroke-width="4" paint-order="stroke">${t}</text>`;};
+function strich(A,B,m){const M=[(A[0]+B[0])/2,(A[1]+B[1])/2],d=ein([B[0]-A[0],B[1]-A[1]]),n=[-d[1],d[0]];let s="";
+  for(let j=0;j<m;j++){const o=(j-(m-1)/2)*6,c=[M[0]+d[0]*o,M[1]+d[1]*o];s+=lin([c[0]-n[0]*7,c[1]-n[1]*7],[c[0]+n[0]*7,c[1]+n[1]*7],{sw:2});}return s;}
+/* Viereck: pts in cm (y oben). o: real (Originalgröße fürs Geodreieck), s (px/cm), blau (a, c blau), lab {a,b,c,d}, h:[x, Text], eq [[seiten]], ra [Ecken], ecken, diag {e,f}, str [[P,Q,Nr,Farbe]] */
+function q(pts,o){o=o||{};const s=o.real?34:(o.s||26),pad=o.pad||(o.lab||o.diag?56:28);
+  const ext=pts.concat(o.h?[[o.h[0],0]]:[]),xs=ext.map(p=>p[0]),ys=ext.map(p=>p[1]);
+  const x0=Math.min(...xs),x1=Math.max(...xs),y0=Math.min(...ys),y1=Math.max(...ys),W=(x1-x0)*s+2*pad,H=(y1-y0)*s+2*pad;
+  const S=p=>[pad+(p[0]-x0)*s,pad+(y1-p[1])*s],P=pts.map(S);
+  let g=`<svg class="${o.real?"mess":"tz"}" width="${W.toFixed(0)}" height="${H.toFixed(0)}" viewBox="0 0 ${W.toFixed(0)} ${H.toFixed(0)}" role="img" aria-label="Viereck">`;
+  g+=`<polygon points="${P.map(p=>f1(p[0])+","+f1(p[1])).join(" ")}" fill="${o.real?"#fff":"#e6f0fb"}" stroke="#111" stroke-width="2.8" stroke-linejoin="round"/>`;
+  if(o.blau)g+=lin(P[0],P[1],{st:BL,sw:5})+lin(P[3],P[2],{st:BL,sw:5});
+  (o.eq||[]).forEach((gr,gi)=>gr.forEach(n=>{const i="abcd".indexOf(n);g+=strich(P[i],P[(i+1)%4],gi?3:2);}));
+  (o.ra||[]).forEach(i=>{const p=P[i],v1=P[(i+1)%4],v0=P[(i+3)%4];g+=rwB(p,[v1[0]-p[0],v1[1]-p[1]],[v0[0]-p[0],v0[1]-p[1]],13);});
+  if(o.h){const hx=o.h[0],top=S([hx,pts[3][1]]),fu=S([hx,0]),a=pts[1][0];
+    if(hx>a+1e-6)g+=lin(P[1],[fu[0]+12,fu[1]],{sw:1.6,dash:"6 5"});if(hx<-1e-6)g+=lin(P[0],[fu[0]-12,fu[1]],{sw:1.6,dash:"6 5"});
+    g+=lin(top,fu,{st:OR,sw:3,dash:"8 6"})+rwB(fu,[0,-1],[hx>=a?-1:1,0],12);if(o.h[1])g+=T(fu[0]+(hx>=a?-8:8),(top[1]+fu[1])/2,o.h[1],{fill:OR,an:hx>=a?"end":"start",fs:16});}
+  if(o.diag){const X=[P[1][0],P[0][1]];g+=lin(P[0],P[2],{st:BL,sw:3})+lin(P[1],P[3],{st:OR,sw:3})+rwB(X,[1,0],[0,-1],11);
+    if(o.diag.e)g+=T((X[0]+P[2][0])/2,X[1]-12,o.diag.e,{fill:BL,fs:16});if(o.diag.f)g+=T(X[0]-8,(X[1]+P[1][1])/2,o.diag.f,{fill:OR,an:"end",fs:16});}
+  (o.str||[]).forEach(([A,B,n,c])=>{const a=S(A),b=S(B);g+=lin(a,b,{st:c,sw:4});const m=[(a[0]+b[0])/2,(a[1]+b[1])/2],d=ein([b[0]-a[0],b[1]-a[1]]);
+    g+=`<circle cx="${f1(m[0]-d[1]*17)}" cy="${f1(m[1]+d[0]*17)}" r="12" fill="#fff" stroke="${c}" stroke-width="2.5"/>`+T(m[0]-d[1]*17,m[1]+d[0]*17,n,{fill:c,fs:14});});
+  if(o.lab){const m=[P.reduce((x,p)=>x+p[0],0)/4,P.reduce((x,p)=>x+p[1],0)/4];
+    "abcd".split("").forEach((n,i)=>{const t=o.lab[n];if(!t)return;const A=P[i],B=P[(i+1)%4],M=[(A[0]+B[0])/2,(A[1]+B[1])/2],d=ein([B[0]-A[0],B[1]-A[1]]);let nn=[-d[1],d[0]];
+      if((M[0]-m[0])*nn[0]+(M[1]-m[1])*nn[1]<0)nn=[-nn[0],-nn[1]];const off=15+Math.abs(nn[0])*t.length*4.6;
+      g+=T(M[0]+nn[0]*off,M[1]+nn[1]*off,t,{fill:o.blau&&(n==="a"||n==="c")?BL:"#111",fs:16});});}
+  if(o.ecken){const m=[P.reduce((x,p)=>x+p[0],0)/4,P.reduce((x,p)=>x+p[1],0)/4];"ABCD".split("").forEach((n,i)=>{const d=ein([P[i][0]-m[0],P[i][1]-m[1]]);g+=T(P[i][0]+d[0]*16,P[i][1]+d[1]*16,n,{fs:17});});}
+  return g+`</svg>`;}
+const tr=(a,c,dx,h,o)=>q([[0,0],[a,0],[dx+c,h],[dx,h]],o);
+const kite=(e,f,p,o)=>q([[0,f/2],[p*e,0],[e,f/2],[p*e,f]],o);
+return {q,tr,kite};})();
+
+const TFIGS=[ /* Punkte, Trapez?, Name */
+ {p:[[0,0],[6,0],[4.5,3],[1.5,3]],ja:true,o:{eq:[["b","d"]]}},{p:[[0,0],[6,0],[6,3],[2,3]],ja:true,o:{ra:[1,2]}},{p:[[0,0],[5,0],[6.5,3],[1.5,3]],ja:true},
+ {p:[[0,0],[6,0],[6,3.2],[0,3.2]],ja:true,o:{ra:[0,1,2,3]}},{p:[[0,0],[3,0],[4.6,2.6],[1.6,2.6]],ja:true,o:{eq:[["a","b","c","d"]]}},{p:[[0,0],[7,0],[5,2.5],[3,2.5]],ja:true},
+ {p:[[0.6,0],[5,0.9],[3.8,4.05],[1.6,3.6]],ja:true},{p:[[0,0],[5,0],[5,2.4],[0,4]],ja:true,o:{ra:[0,1]}},
+ {p:[[2,0],[4,1.7],[2,4.5],[0,1.7]],ja:false},{p:[[0,0],[5,1],[4,4],[1,3]],ja:false},{p:[[0,0],[5,0.6],[3.4,3],[0.4,2.2]],ja:false},{p:[[1.5,0],[3,2.6],[1.5,3.6],[0,2.6]],ja:false},{p:[[0,0.4],[4.6,0],[4,2.8],[0.8,3.4]],ja:false}];
+const TAUSSAGEN=[
+ ["Jedes Parallelogramm ist ein Trapez.",true,"Ein Parallelogramm hat sogar zwei Paare paralleler Seiten."],
+ ["Jedes Trapez ist ein Parallelogramm.",false,"Ein Trapez braucht nur ein Paar paralleler Seiten."],
+ ["Ein Quadrat ist auch ein Trapez.",true,"Es hat zwei Paare paralleler Seiten."],
+ ["Ein Drachenviereck ist immer ein Trapez.",false,"Ein Drachenviereck hat meist keine parallelen Seiten."],
+ ["Im gleichschenkligen Trapez sind die Schenkel gleich lang.",true,"Darum heißt es gleichschenklig: b = d."],
+ ["Im Trapez sind die beiden Schenkel immer parallel.",false,"Parallel sind a und c. Die Schenkel b und d sind meist schräg."],
+ ["Beim rechtwinkligen Trapez ist ein Schenkel zugleich die Höhe.",true,"Dieser Schenkel steht senkrecht auf a und c."],
+ ["Die Höhe eines Trapezes kann außerhalb liegen.",true,"Wenn c über a hinausragt, verlängert man a gestrichelt."],
+ ["Die Höhe ist immer so lang wie ein Schenkel.",false,"Nur beim rechtwinkligen Trapez. Sonst ist die Höhe kürzer als der schräge Schenkel."]];
+const SF=["#C2185B","#6A1B9A","#E65100"];
+const STRK=[ /* Trapez, drei Strecken (die Höhe ist k) */
+ {t:[7,4,1.5,3],s:[[[0,0],[1.5,3]],[[3,3],[3,0]],[[5,3],[4,0]]],k:1},
+ {t:[6,4,2.5,3],s:[[[2.5,3],[2.5,0]],[[6,0],[6.5,3]],[[4.5,3],[3.2,0]]],k:0},
+ {t:[4,3,3.5,2.5],s:[[[4,0],[6.5,2.5]],[[3.5,2.5],[2.5,0]],[[5,2.5],[5,0]]],k:2,aus:true},
+ {t:[7,3,0,3],s:[[[3,3],[5,0]],[[7,0],[3,3]],[[0,0],[0,3]]],k:2}];
+function strAufg(){const S=pick(STRK),ord=shuffle([0,1,2]),[a,c,dx,h]=S.t;
+  const str=ord.map((k,i)=>[S.s[k][0],S.s[k][1],String(i+1),SF[i]]),rich="Strecke "+(ord.indexOf(S.k)+1);
+  return Object.assign(mc("Die blauen Seiten a und c sind parallel. Welche Strecke ist die Höhe?",TZ.tr(a,c,dx,h,{blau:true,str,s:30}),rich,["Strecke 1","Strecke 2","Strecke 3"],
+    `Die Höhe steht senkrecht auf a und c. Das ist ${rich}.${S.aus?"<br>Hier liegt die Höhe außerhalb – die Seite a wird gestrichelt verlängert.":""}`),{kat:"str"+STRK.indexOf(S)+rich});}
+const tolLT=(v,u)=>[[rund(v-.1),u],[v,u],[rund(v+.1),u]];
+const tolAT=(a,c,h,u)=>{const s=[];[a-.1,a,a+.1].forEach(x=>[c-.1,c,c+.1].forEach(y=>[h-.1,h,h+.1].forEach(k=>s.push([rund(Math.round((x+y)*k/2*1000)/1000),u]))));return s;};
+const MESST=[[6,3,1.5,3.5],[7,3.5,2,3],[5,3,0,3.5],[4,3,4.5,2],[6.5,4,1,2.5],[3.5,2.5,3,3]]; /* a, c, dx, h (cm) */
+function messH(){const [a,c,dx,h]=pick(MESST),aus=dx+c>a+1e-6&&dx>=a-1e-6||dx<0;
+  return{q:"Miss mit dem 📐 Geodreieck (Knopf unten rechts) die Höhe h: Lege die Mittellinie auf a und schiebe die Kante an die Ecke D.",svg:TZ.tr(a,c,dx,h,{real:true,ecken:true}),
+    felder:[{label:"h =",ok:tolLT(h,"cm"),fest:"cm"}],kat:"mh"+a+dx,loes:`h = ${L(h,"cm")}`,ex:`Die Höhe ist ${L(h,"cm")} lang.${dx>a?" Sie liegt außerhalb.":""}<br>Messungen bis 1 mm daneben zählen als richtig.`};}
+function messA(){const [a,c,dx,h]=pick(MESST),A=rund((a+c)*h/2);
+  return{q:"Miss mit dem 📐 Geodreieck a, c und die Höhe h. Berechne dann A.",svg:TZ.tr(a,c,dx,h,{real:true,ecken:true}),
+    felder:[{label:"a =",ok:tolLT(a,"cm"),fest:"cm"},{label:"c =",ok:tolLT(c,"cm"),fest:"cm"},{label:"h =",ok:tolLT(h,"cm"),fest:"cm"},{label:"A =",ok:tolAT(a,c,h,"cm²"),fest:"cm²"}],kat:"ma"+a+dx,
+    loes:`a = ${L(a,"cm")}, c = ${L(c,"cm")}, h = ${L(h,"cm")}, A = ${L(A,"cm²")}`,ex:`A = ${halb} · (${L(a,"cm")} + ${L(c,"cm")}) · ${L(h,"cm")} = ${halb} · ${L(a+c,"cm")} · ${L(h,"cm")} = ${L(A,"cm²")}<br>Messungen bis 1 mm daneben zählen als richtig.`};}
+/* 4-1 Trapez und Höhe: 0★ ja/nein, parallele Seiten · 1★ Aussagen, richtige Höhe · 2★ Höhe messen, auch außerhalb */
+function g41(lv){
+  if(lv===0){if(rnd(0,9)<7){const F=pick(TFIGS),rot=rnd(0,1)&&F.ja?rnd(-40,40):0;let p=F.p;
+      if(rot){const cx=p.reduce((s,q)=>s+q[0],0)/4,cy=p.reduce((s,q)=>s+q[1],0)/4,r=rot*Math.PI/180;p=p.map(([x,y])=>[cx+(x-cx)*Math.cos(r)-(y-cy)*Math.sin(r),cy+(x-cx)*Math.sin(r)+(y-cy)*Math.cos(r)]);}
+      return{q:"Ist diese Figur ein Trapez?",svg:TZ.q(p,Object.assign({s:30},F.o||{})),opts:["ja","nein"],ans:F.ja?0:1,kat:"f"+TFIGS.indexOf(F),
+        ex:F.ja?"Ja: Sie hat mindestens ein Paar paralleler Seiten.":"Nein: Keine zwei Seiten sind parallel."};}
+    const [a,c,dx,h]=pick([[6,3,1.5,3],[7,4,0,3],[6,4,2.5,3]]);
+    return Object.assign(mc("Welche Seiten sind im Trapez parallel?",TZ.tr(a,c,dx,h,{lab:{a:"a",b:"b",c:"c",d:"d"},s:30,ecken:true}),"a und c",["b und d","a und b","c und d"],"Im Trapez sind die Seiten a und c parallel. b und d heißen Schenkel."),{kat:"par"});}
+  if(lv===1){if(rnd(0,1)){const [t,w,e]=pick(TAUSSAGEN);return{q:`Wahr oder falsch?<br><b>${t}</b>`,opts:["wahr","falsch"],ans:w?0:1,kat:t.slice(0,12),ex:(w?"Wahr: ":"Falsch: ")+e};}
+    return strAufg();}
+  return rnd(0,9)<6?messH():strAufg();}
+/* 4-2 Flächeninhalt und Umfang: 0★ ganze Zahlen · 1★ Kommazahlen, Umfang, Schenkel als Ablenker · 2★ Einheiten, fehlende Größe, Messen */
+function trapBild(a,c,h,o){o=o||{};const sc=Math.max(a,c)>20?.1:1,A_=Math.min(9,Math.max(4,a*sc)),C_=Math.min(A_-1,Math.max(1.5,c*sc*A_/(a*sc))),H_=Math.min(4,Math.max(2,h*sc));
+  const dx=o.rw?0:(A_-C_)/2;return TZ.tr(A_,C_,dx,H_,{blau:true,s:28,lab:o.lab,h:o.hl?[dx+(o.rw?0:.35),o.hl]:null,eq:o.eq,ra:o.rw?[0,3]:null});}
+function flT(a,c,h,T,o){o=o||{};const A=rund((a+c)*h/2);
+  return{q:`Trapez: Berechne den Flächeninhalt A${o.inT?` in ${QU(T)}`:""}.${o.s?` Die Schenkel sind ${L(o.s,T)} lang.`:""}`,
+    svg:trapBild(a,c,h,{lab:{a:"a = "+(o.ad||L(a,T)),c:"c = "+(o.cd||L(c,T)),b:o.s?L(o.s,T):"",d:o.s?L(o.s,T):""},hl:"h = "+(o.hd||L(h,T)),eq:o.s?[["b","d"]]:null}),
+    felder:[{label:"A =",ok:[[A,QU(T)]],units:wahl(T,o.o2)}],kat:String(A)+T,loes:`A = ${L(A,QU(T))}`,
+    tipp:x=>{const v=x[0];if(gleich(v,rund((a+c)*h)))return"Das ist der Flächeninhalt von zwei Trapezen (Parallelogramm). Denk an das ½.";
+      if(gleich(v,rund(a/2+c*h))||gleich(v,rund(a+c*h/2)))return"Klammer nicht vergessen: erst a + c, dann mal h, dann halbieren.";
+      if(o.s&&gleich(v,rund((a+c)*o.s/2)))return"Der Schenkel ist nicht die Höhe. Nimm h.";
+      if(o.roh&&gleich(v,o.roh))return"Erst gleiche Einheiten, dann rechnen!";return"";},
+    ex:`${o.vor||""}A = ${halb} · (${L(a,T)} + ${L(c,T)}) · ${L(h,T)} = ${halb} · ${L(rund(a+c),T)} · ${L(h,T)} = ${L(A,QU(T))}`};}
+function umfT(lv){const T=pick(["cm","m","dm"]),gl=rnd(0,1),a=rnd(7,14),c=rnd(3,a-2),b=lv?pick([3.5,4.2,5,6.5,2.8]):rnd(3,8),d=gl?b:(lv?pick([3,4.4,5.5,6]):rnd(3,8)),u=rund(a+b+c+d);
+  return{q:"Trapez: Berechne den Umfang u.",svg:TZ.tr(7,4,1.5,3,{blau:true,s:28,lab:{a:L(a,T),b:L(b,T),c:L(c,T),d:L(d,T)},eq:gl?[["b","d"]]:null}),
+    felder:[{label:"u =",ok:[[u,T]],units:wahl(T)}],kat:"u"+u,loes:`u = ${L(u,T)}`,tipp:x=>gleich(x[0],rund(a+c))?"Für den Umfang brauchst du alle vier Seiten.":"",
+    ex:`u = ${L(a,T)} + ${L(b,T)} + ${L(c,T)} + ${L(d,T)} = ${L(u,T)}`};}
+function fehltT(){const T=pick(["cm","m","dm"]);let a=rnd(5,12),c=rnd(2,a-1);if((a+c)%2)c=c>2?c-1:c+1;const m=(a+c)/2,h=rnd(2,8),A=m*h;
+  return{q:`Trapez: A = ${L(A,QU(T))}, a = ${L(a,T)}, c = ${L(c,T)}. Berechne die Höhe h.`,svg:trapBild(a,c,h,{lab:{a:"a = "+L(a,T),c:"c = "+L(c,T)},hl:"h = ?"}),
+    felder:[{label:"h =",ok:[[h,T]],units:wahl(T)}],kat:"fh"+A,loes:`h = ${L(h,T)}`,tipp:x=>gleich(x[0],rund(A/(a+c)))?"Denk an das ½: Rechne zuerst ½ · (a + c) aus.":"",
+    ex:`${halb} · (${L(a,T)} + ${L(c,T)}) = ${L(m,T)}<br>→ ${L(m,T)} · ? = ${L(A,QU(T))}<br>→ h = ${L(A,QU(T))} : ${L(m,T)} = ${L(h,T)}`};}
+function g42(lv){
+  if(lv===0){const T=pick(["cm","cm","m","dm","mm"]);let a=rnd(5,14),c=rnd(2,a-1),h=rnd(2,9);if(((a+c)*h)%2)h++;return flT(a,c,h,T);}
+  if(lv===1){const t=rnd(0,9);
+    if(t<4){const T=pick(["cm","m"]),a=pick([5.5,6.5,7.5,4.5,8,9]),c=pick([2.5,3,1.5,3.5,2]),h=pick([2,4,3,1.5,2.5]);return flT(a,c,h,T);}
+    if(t<7){const T=pick(["cm","m","dm"]),a=rnd(8,14),c=a-2*pick([2,3]),h=pick([3,4,5]),o=(a-c)/2,s=rund(Math.round(Math.hypot(o,h)*10)/10);return flT(a,c,h,T,{s});}
+    return umfT(1);}
+  const t=rnd(0,9);
+  if(t<4){const [av,au,cv,cu,hv,hu,T]=pick([[1.5,"m",90,"cm",60,"cm","m"],[2,"m",8,"dm",50,"cm","dm"],[1.2,"m",60,"cm",40,"cm","cm"],[80,"cm",4,"dm",3,"dm","dm"],[3,"m",150,"cm",80,"cm","m"]]);
+    const aT=convL(av,au,T),cT=convL(cv,cu,T),hT=convL(hv,hu,T),vor=[[av,au,aT],[cv,cu,cT],[hv,hu,hT]].filter(z=>z[1]!==T).map(z=>`${L(z[0],z[1])} = ${L(z[2],T)}`).join("; ");
+    return flT(aT,cT,hT,T,{inT:true,ad:L(av,au),cd:L(cv,cu),hd:L(hv,hu),o2:[au,cu,hu].find(u=>u!==T),roh:rund((av+cv)*hv/2),vor:"Erst gleiche Einheiten: "+vor+"<br>"});}
+  if(t<7)return fehltT();
+  return messA();}
+/* 4-3 Sachaufgaben (5 pro Runde): Online-Shop */
+const PROD4=[
+ {n:"Popcorn-Box „Kino XL“",p:"2,49 €",fA:"Wie groß ist die Vorderseite für den Aufdruck?",T:"cm",d0:[[12,18,20],[10,16,18]],d1:[[11,17,19],[13,19,22]],d2:[[0.12,"m",18,"cm",2,"dm"],[10,"cm",1.6,"dm",0.18,"m"]],x:["Füllmenge: 3 Liter","Material: Karton","Lebensmittelecht","Farbe: Rot-Weiß"]},
+ {n:"Lampenschirm „Retro“ (eine Seite)",p:"19,90 €",fA:"Wie viel Stoff braucht eine Seite?",T:"cm",d0:[[30,14,24],[26,12,20]],d1:[[28,16,25],[32,18,21]],d2:[[0.3,"m",14,"cm",2.4,"dm"],[26,"cm",1.2,"dm",0.2,"m"]],x:["4 Seiten pro Schirm","Für E27-Fassung","Farbe: Senfgelb","Stoff: Leinen"]},
+ {n:"Sprungkasten-Bezug (Seitenteil)",p:"39,00 €",fA:"Wie groß ist ein Seitenteil?",T:"cm",d0:[[90,60,40],[80,50,30]],d1:[[85,55,35],[95,65,45]],d2:[[0.9,"m",60,"cm",4,"dm"],[80,"cm",0.5,"m",3,"dm"]],x:["Material: Kunstleder","Für Schulsporthallen","Gewicht: 1,2 kg","Farbe: Blau"]},
+ {n:"Laptop-Ständer „Desk“ (Seitenteil)",p:"29,99 €",fA:"Wie groß ist ein Seitenteil?",T:"cm",d0:[[26,10,12],[24,8,10]],d1:[[25,11,13],[27,9,11]],d2:[[0.26,"m",10,"cm",1.2,"dm"],[24,"cm",0.8,"dm",0.1,"m"]],x:["Material: Aluminium","Für Laptops bis 17 Zoll","Gewicht: 900 g","Rutschfeste Füße"]},
+ {n:"Hochbeet-Wand „Garden“",p:"49,90 €",fA:"Wie groß ist die Wand?",T:"m",d0:[[2,1,1],[3,2,1]],d1:[[2.4,1.6,0.8],[1.8,1.2,0.6]],d2:[[240,"cm",1.6,"m",80,"cm"],[2,"m",120,"cm",60,"cm"]],x:["Material: Lärchenholz","Witterungsbeständig","Mit Schrauben","Lieferzeit: 5 Werktage"]},
+ {n:"Fenster-Sichtschutz „Dach“",p:"15,49 €",fA:"Wie groß ist die Folie?",T:"cm",d0:[[100,60,80],[120,80,90]],d1:[[110,70,85],[90,50,75]],d2:[[1.2,"m",80,"cm",0.9,"m"],[1,"m",60,"cm",8,"dm"]],x:["Für Dachfenster","Lässt Licht durch","Wiederablösbar","Lieferzeit: 2 Werktage"]}];
+function g43(lv){
+  const P=pick(PROD4),T=P.T,typ=lv===0?"A":pick(["A","A","H"]);let av,au,cv,cu,hv,hu;
+  if(lv<2){const e=pick(lv===0?P.d0:P.d1);[av,cv,hv]=e;au=cu=hu=T;}else{[av,au,cv,cu,hv,hu]=pick(P.d2);}
+  const aT=convL(av,au,T),cT=convL(cv,cu,T),hT=convL(hv,hu,T),A=rund((aT+cT)*hT/2),o2=[au,cu,hu].find(u=>u!==T);
+  const vor=[[av,au,aT],[cv,cu,cT],[hv,hu,hT]].filter(z=>z[1]!==T).map(z=>`${L(z[0],z[1])} = ${L(z[2],T)}`),erst=vor.length?"Erst gleiche Einheiten: "+vor.join("; ")+"<br>":"";
+  const extra=shuffle(P.x).slice(0,lv===0?0:lv===1?2:3),ordne=l=>lv<2?l:shuffle(l),mA=`Breite unten: ${L(av,au)}`,mC=`Breite oben: ${L(cv,cu)}`,mH=`Höhe: ${L(hv,hu)}`;
+  const ueber=`Alle anderen Angaben (Preis${lv?", Gewicht, Material …":""}) braucht man nicht.`;
+  if(typ==="A"){const q=`Form: Trapez. Lies die Maße aus der Produktbeschreibung ab. ${P.fA}${lv===2?` Gib A in ${QU(T)} an.`:""}`;
+    return{q,svg:shop2(P,ordne(["Form: Trapez",mA,mC,mH,...extra]),q),felder:[{label:"A =",ok:[[A,QU(T)]],units:wahl(T,o2)}],kat:P.n,loes:`A = ${L(A,QU(T))}`,
+      tipp:x=>{const v=x[0];if(gleich(v,rund((aT+cT)*hT)))return"Denk an das ½: A = ½ · (a + c) · h.";if(lv===2&&gleich(v,rund((av+cv)*hv/2)))return"Erst gleiche Einheiten, dann rechnen!";return"";},
+      ex:`${erst}A = ${halb} · (${L(aT,T)} + ${L(cT,T)}) · ${L(hT,T)} = ${halb} · ${L(rund(aT+cT),T)} · ${L(hT,T)} = ${L(A,QU(T))}<br>${ueber}`};}
+  const m=rund((aT+cT)/2),q=`Form: Trapez. Lies die Angaben ab. Berechne die Höhe h${lv===2?` in ${T}`:""}.`;
+  return{q,svg:shop2(P,ordne(["Form: Trapez",`Fläche: ${L(A,QU(T))}`,mA,mC,...extra]),q),felder:[{label:"h =",ok:[[hT,T]],units:wahl(T,o2)}],kat:P.n,loes:`h = ${L(hT,T)}`,
+    tipp:x=>gleich(x[0],rund(A/(aT+cT)))?"Denk an das ½: Rechne zuerst ½ · (a + c) aus.":"",
+    ex:`${erst}${halb} · (${L(aT,T)} + ${L(cT,T)}) = ${L(m,T)}<br>→ ${L(m,T)} · ? = ${L(A,QU(T))}<br>→ h = ${L(A,QU(T))} : ${L(m,T)} = ${L(hT,T)}<br>${ueber}`};}
+/* 4-4 ★ Raute und Drachenviereck – Nur fürs LH 1: 0★ A = ½ · e · f · 1★ Umfang, erkennen · 2★ Einheiten, fehlende Diagonale */
+function rdBild(e,f,p,el,fl){return TZ.kite(Math.min(8,Math.max(4,e>20?e/10:e)),Math.min(5,Math.max(2.5,f>20?f/10:f)),p,{s:26,pad:24,diag:{},eq:p===.5?[["a","b","c","d"]]:[["a","d"],["b","c"]]})+`<div style="text-align:center;font-weight:700;font-size:1.1em"><span style="color:#1565C0">${el}</span> &nbsp;&nbsp; <span style="color:#C2410C">${fl}</span></div>`;}
+function g44(lv){
+  if(lv===0){if(rnd(0,9)<3){const r=rnd(0,1),p=r?.5:pick([.25,.3,.35]);
+      return Object.assign(mc("Wie heißt diese Figur?",TZ.kite(6,4,p,{s:28,eq:r?[["a","b","c","d"]]:[["a","d"],["b","c"]]}),r?"Raute":"Drachenviereck",["Raute","Drachenviereck","Trapez"],
+        r?"Alle vier Seiten sind gleich lang → Raute.":"Je zwei benachbarte Seiten sind gleich lang → Drachenviereck."),{kat:"rn"+r});}
+    const T=pick(["cm","cm","m","dm"]);let e=rnd(4,14),f=rnd(3,10);if((e*f)%2)f++;const A=e*f/2,r=rnd(0,1);
+    return{q:`${r?"Raute":"Drachenviereck"}: Berechne den Flächeninhalt A.`,svg:rdBild(e,f,r?.5:.3,"e = "+L(e,T),"f = "+L(f,T)),felder:[{label:"A =",ok:[[A,QU(T)]],units:wahl(T)}],kat:"rA"+A,loes:`A = ${L(A,QU(T))}`,
+      tipp:x=>gleich(x[0],e*f)?"Das ist das Rechteck um die Diagonalen. Die Figur ist die Hälfte.":"",ex:`A = ${halb} · ${L(e,T)} · ${L(f,T)} = ${L(A,QU(T))}`};}
+  if(lv===1){const t=rnd(0,9),T=pick(["cm","m"]);
+    if(t<4){const a=pick([4.5,6,7.5,3.2,5.5]),u=rund(4*a);return{q:`Eine Raute hat die Seite a = ${L(a,T)}. Berechne den Umfang u.`,svg:"",felder:[{label:"u =",ok:[[u,T]],units:wahl(T)}],kat:"ru"+u,loes:`u = ${L(u,T)}`,
+      tipp:x=>gleich(x[0],rund(a*a))?"Das ist kein Flächeninhalt: u = 4 · a.":"",ex:`u = 4 · ${L(a,T)} = ${L(u,T)}`};}
+    if(t<7){const a=pick([3,4,2.5,5]),b=pick([6,7.5,8,5.5]),u=rund(2*(a+b));return{q:`Ein Drachenviereck hat die Seiten a = ${L(a,T)} und b = ${L(b,T)}. Berechne den Umfang u.`,svg:"",felder:[{label:"u =",ok:[[u,T]],units:wahl(T)}],kat:"du"+u,loes:`u = ${L(u,T)}`,
+      tipp:x=>gleich(x[0],rund(a+b))?"Jede Seite kommt zweimal vor: u = 2 · (a + b).":"",ex:`u = 2 · (${L(a,T)} + ${L(b,T)}) = 2 · ${L(rund(a+b),T)} = ${L(u,T)}`};}
+    const e=pick([4.5,7.5,5,6.4]),f=pick([3,4,2.5,6]),A=rund(e*f/2);
+    return{q:"Berechne den Flächeninhalt A.",svg:rdBild(e,f,pick([.5,.3]),"e = "+L(e,T),"f = "+L(f,T)),felder:[{label:"A =",ok:[[A,QU(T)]],units:wahl(T)}],kat:"rk"+A,loes:`A = ${L(A,QU(T))}`,
+      tipp:x=>gleich(x[0],rund(e*f))?"Denk an das ½.":"",ex:`A = ${halb} · ${L(e,T)} · ${L(f,T)} = ${L(A,QU(T))}`};}
+  if(rnd(0,1)){const [ev,eu,fv,fu,T]=pick([[1,"m",40,"cm","cm"],[1.2,"m",50,"cm","m"],[60,"cm",4,"dm","dm"],[2,"m",90,"cm","m"]]);
+    const eT=convL(ev,eu,T),fT=convL(fv,fu,T),A=rund(eT*fT/2),vor=[[ev,eu,eT],[fv,fu,fT]].filter(z=>z[1]!==T).map(z=>`${L(z[0],z[1])} = ${L(z[2],T)}`).join("; ");
+    return{q:`Raute: e = ${L(ev,eu)}, f = ${L(fv,fu)}. Berechne A in ${QU(T)}.`,svg:rdBild(eT,fT,.5,"e = "+L(ev,eu),"f = "+L(fv,fu)),felder:[{label:"A =",ok:[[A,QU(T)]],units:wahl(T,[eu,fu].find(u=>u!==T))}],kat:"re"+A,loes:`A = ${L(A,QU(T))}`,
+      tipp:x=>gleich(x[0],rund(ev*fv/2))?"Erst gleiche Einheiten, dann rechnen!":"",ex:`Erst gleiche Einheiten: ${vor}<br>A = ${halb} · ${L(eT,T)} · ${L(fT,T)} = ${L(A,QU(T))}`};}
+  const T=pick(["cm","m"]),kn=rnd(5,12),res=rnd(3,9);const A=kn*res/2;if(!Number.isInteger(A)&&A*2%1)return g44(2);
+  return{q:`Drachenviereck: A = ${L(A,QU(T))}, e = ${L(kn,T)}. Berechne die Diagonale f.`,svg:rdBild(kn,res,.3,"e = "+L(kn,T),"f = ?"),felder:[{label:"f =",ok:[[res,T]],units:wahl(T)}],kat:"rf"+res,loes:`f = ${L(res,T)}`,
+    tipp:x=>gleich(x[0],rund(A/kn))?"Denk an das ½: Ohne das ½ ist die Fläche doppelt so groß.":"",ex:`Ohne das ½: e · f = 2 · ${L(A,QU(T))} = ${L(2*A,QU(T))}<br>f = ${L(2*A,QU(T))} : ${L(kn,T)} = ${L(res,T)}`};}
+
+/* ================= Level 5: Zusammengesetzte Figuren ================= */
+const ZFILL={0:"#E3F0FB",1:"#DCEBFB",2:"#FFE3D3"},ZNC={1:"#1565C0",2:"#C2410C"};
+const zU=(x,y)=>{const l=Math.hypot(x,y)||1;return[x/l,y/l]};
+const zArea=P=>{let s=0;P.forEach((p,i)=>{const q=P[(i+1)%P.length];s+=p[0]*q[1]-q[0]*p[1]});return s/2};
+const zCen=P=>[P.reduce((a,p)=>a+p[0],0)/P.length,P.reduce((a,p)=>a+p[1],0)/P.length];
+function zTx(x,y,t,o){o=o||{};return '<text x="'+x.toFixed(1)+'" y="'+y.toFixed(1)+'" font-family="Arial" font-size="'+(o.fs||16)+'" text-anchor="middle" dominant-baseline="central" fill="'+(o.fill||"#111")+'" font-weight="700"'+(o.halo?' stroke="#fff" stroke-width="4" paint-order="stroke"':'')+'>'+esc(t)+'</text>';}
+/* Figur: pts in Einheiten; lab {Kante:Text}; parts; cut; comp; holes; htxt; dims; lines (nummerierte Linien); real (Originalgröße in cm) */
+function zfig(o){
+  const P=o.pts,all=P.concat(...(o.dims||[]).map(d=>[d.a,d.b]));
+  const xs=all.map(p=>p[0]),ys=all.map(p=>p[1]),mx=Math.min(...xs),Mx=Math.max(...xs),my=Math.min(...ys),My=Math.max(...ys);
+  const s=o.real?34:Math.min(40,260/Math.max(Mx-mx,(My-my)*1.2)),fs=16;
+  const labs=Object.values(o.lab||{}).concat((o.dims||[]).map(d=>d.t)),ml=Math.max(2,...labs.map(x=>x.length)),pad=o.real?24:fs*(1.6+ml*.45);
+  const S=p=>[(p[0]-mx)*s+pad,(My-p[1])*s+pad],W=(Mx-mx)*s+2*pad,H=(My-my)*s+2*pad;
+  const pts=Q=>Q.map(S).map(p=>p[0].toFixed(1)+","+p[1].toFixed(1)).join(" ");
+  const ln=(a,b,col,w,dash)=>{const A=S(a),B=S(b);return '<line x1="'+A[0].toFixed(1)+'" y1="'+A[1].toFixed(1)+'" x2="'+B[0].toFixed(1)+'" y2="'+B[1].toFixed(1)+'" stroke="'+col+'" stroke-width="'+w+'"'+(dash?' stroke-dasharray="8 6"':'')+' stroke-linecap="round"/>';};
+  let g='<svg class="'+(o.real?"mess":"tz")+'" width="'+W.toFixed(0)+'" height="'+H.toFixed(0)+'" viewBox="0 0 '+W.toFixed(0)+' '+H.toFixed(0)+'" role="img" aria-label="Zusammengesetzte Figur">';
+  if(o.comp)g+='<polygon points="'+pts(o.comp)+'" fill="#e6e6e6" stroke="#777" stroke-width="2" stroke-dasharray="8 6"/>';
+  g+='<polygon points="'+pts(P)+'" fill="'+(o.real?"#fff":ZFILL[0])+'"/>';
+  (o.parts||[]).forEach(q=>g+='<polygon points="'+pts(q.pts)+'" fill="'+ZFILL[q.c]+'"/>');
+  (o.holes||[]).forEach(h=>g+='<polygon points="'+pts(h)+'" fill="#fff" stroke="#111" stroke-width="2.6"/>');
+  (o.cut||[]).forEach(c=>g+=ln(c[0],c[1],"#333",2.4,1));
+  g+='<polygon points="'+pts(P)+'" fill="none" stroke="#111" stroke-width="2.8" stroke-linejoin="round"/>';
+  (o.parts||[]).forEach(q=>{const c=S(q.np||zCen(q.pts));g+=zTx(c[0],c[1],q.n,{fs:20,fill:ZNC[q.c]});});
+  (o.lines||[]).forEach((l,i)=>{const cols=["#6A1B9A","#00838F","#E65100"];g+=ln(l[0],l[1],cols[i],3.4,1);const A=S(l[0]),B=S(l[1]),m=[A[0]+(B[0]-A[0])*.35,A[1]+(B[1]-A[1])*.35];
+    g+='<circle cx="'+m[0].toFixed(1)+'" cy="'+m[1].toFixed(1)+'" r="12" fill="#fff" stroke="'+cols[i]+'" stroke-width="2.5"/>'+zTx(m[0],m[1],i+1,{fs:14,fill:cols[i]});});
+  const kanten=(Q,lab)=>{const ccw=zArea(Q)>0;Q.forEach((A0,i)=>{const t=lab[i];if(!t)return;const B0=Q[(i+1)%Q.length],A=S(A0),B=S(B0),M=[(A[0]+B[0])/2,(A[1]+B[1])/2];
+    const d=zU(B0[0]-A0[0],B0[1]-A0[1]),n=ccw?[d[1],-d[0]]:[-d[1],d[0]],nS=[n[0],-n[1]],off=fs*.8+Math.abs(nS[0])*t.length*fs*.28;
+    g+=zTx(M[0]+off*nS[0],M[1]+off*nS[1],t,{fill:t==="?"?"#C62828":"#111"});});};
+  if(o.lab)kanten(P,o.lab);
+  if(o.htxt&&o.holes){const c=S(zCen(o.holes[0]));o.htxt.forEach((z,j)=>g+=zTx(c[0],c[1]+(j-(o.htxt.length-1)/2)*15,z,{fs:13}));}
+  (o.dims||[]).forEach(d=>{const A=S(d.a),B=S(d.b),u=zU(B[0]-A[0],B[1]-A[1]),n=[-u[1],u[0]],M=[(A[0]+B[0])/2,(A[1]+B[1])/2];
+    if(d.ext){g+=ln(d.a,d.b,"#333",1.6);[A,B].forEach(p=>g+='<line x1="'+(p[0]-6*n[0]).toFixed(1)+'" y1="'+(p[1]-6*n[1]).toFixed(1)+'" x2="'+(p[0]+6*n[0]).toFixed(1)+'" y2="'+(p[1]+6*n[1]).toFixed(1)+'" stroke="#333" stroke-width="1.6"/>');}
+    else{g+=ln(d.a,d.b,"#C2410C",2.6,1);g+=zRw(A,u,[u[1],-u[0]],11);}
+    const sg=d.ext?(Math.abs(n[1])>.5?-1:1):-1,off=fs*.6+Math.abs(n[0])*d.t.length*fs*.28;
+    g+=zTx(M[0]+sg*off*n[0],M[1]+sg*off*n[1],d.t,{fill:d.ext?"#111":"#C2410C",halo:1});});
+  return g+'</svg>';}
+function zRw(P,u,v,r){const a=[P[0]+u[0]*r,P[1]+u[1]*r],b=[P[0]+v[0]*r,P[1]+v[1]*r],c=[P[0]+(u[0]+v[0])*r*.42,P[1]+(u[1]+v[1])*r*.42],sw=(u[0]*v[1]-u[1]*v[0])>0?1:0;
+  return '<path d="M'+a[0].toFixed(1)+' '+a[1].toFixed(1)+' A'+r+' '+r+' 0 0 '+sw+' '+b[0].toFixed(1)+' '+b[1].toFixed(1)+'" fill="none" stroke="#C2410C" stroke-width="2"/><circle cx="'+c[0].toFixed(1)+'" cy="'+c[1].toFixed(1)+'" r="2" fill="#C2410C"/>';}
+const VOR=t=>` <button type="button" class="vor vor2" data-vor="${ea(t)}" aria-label="Aufgabe vorlesen">🔊</button>`;
+const ZT=()=>pick(["cm","m","dm"]);
+/* Formen (Einheiten = Maßzahlen) */
+function formL(W,H,w,h){return{pts:[[0,0],[W,0],[W,H-h],[W-w,H-h],[W-w,H],[0,H]],k:[W,H-h,w,h,W-w,H],A:W*H-w*h,u:2*(W+H),
+  zer:[[[0,0],[W-w,0],[W-w,H],[0,H]],[[W-w,0],[W,0],[W,H-h],[W-w,H-h]]],zerA:[(W-w)*H,w*(H-h)],cut:[[W-w,0],[W-w,H-h]],stueck:[[W-w,H-h],[W,H-h],[W,H],[W-w,H]]};}
+function formU(W,H,x0,n,d){return{pts:[[0,0],[W,0],[W,H],[x0+n,H],[x0+n,H-d],[x0,H-d],[x0,H],[0,H]],k:[W,H,W-x0-n,d,n,d,x0,H],A:W*H-n*d,u:2*(W+H)+2*d,
+  stueck:[[x0,H-d],[x0+n,H-d],[x0+n,H],[x0,H]]};}
+function formT(W,b,o,s,t){return{pts:[[o,0],[o+s,0],[o+s,t],[W,t],[W,t+b],[0,t+b],[0,t],[o,t]],k:[s,t,W-o-s,b,W,b,o,t],A:W*b+s*t,u:2*(W+b+t),
+  zer:[[[o,0],[o+s,0],[o+s,t],[o,t]],[[0,t],[W,t],[W,t+b],[0,t+b]]],zerA:[s*t,W*b],cut:[[o,t],[o+s,t]]};}
+const labAlle=(F,T,ohne)=>{const l={};F.k.forEach((v,i)=>{if(!(ohne||[]).includes(i))l[i]=L(v,T);});return l;};
+const zufL=()=>{const W=rnd(5,12),H=rnd(4,10);return formL(W,H,rnd(1,W-2),rnd(1,H-2));};
+const zufU=()=>{const W=rnd(7,12),H=rnd(4,8),n=rnd(2,W-4),x0=rnd(1,W-n-1),d=rnd(1,H-2);return formU(W,H,x0,n,d);};
+const zufT=()=>{const W=rnd(6,11),b=rnd(2,4),s=rnd(2,W-3),o=rnd(1,W-s-1),t=rnd(2,7);return formT(W,b,o,s,t);};
+const umfTipp=(F,u)=>x=>{const v=x[0];if(gleich(v,F.A))return"Das ist der Flächeninhalt. Gesucht ist der Umfang: alle Außenseiten addieren.";
+  if(gleich(v,rund(u-F.k[2]-F.k[3]))||gleich(v,rund(u-F.k[2]))||gleich(v,rund(u-F.k[3])))return"Du hast eine Seite vergessen. Zähle alle Seiten rundherum.";return"";};
+
+/* 5-1 Umfang: 0★ alle Maße · 1★ fehlende Seiten, Trennlinie · 2★ Einheiten, Messen */
+function g51(lv){
+  if(lv===0){const F=pick([zufL,zufU,zufT])(),T=ZT(),u=F.k.reduce((a,b)=>a+b,0);
+    return{q:"Berechne den Umfang u der Figur.",svg:zfig({pts:F.pts,lab:labAlle(F,T)}),felder:[{label:"u =",ok:[[u,T]],units:wahl(T)}],kat:"u"+u,loes:`u = ${L(u,T)}`,
+      tipp:umfTipp(F,u),ex:`u = ${F.k.map(v=>L(v,T)).join(" + ")} = ${L(u,T)}`};}
+  if(lv===1){const t=rnd(0,9),T=ZT();
+    if(t<4){const F=zufL(),u=F.u;
+      return{q:"Zwei Seiten fehlen. Überlege sie dir und berechne den Umfang u.",svg:zfig({pts:F.pts,lab:Object.assign(labAlle(F,T,[2,3]),{2:"?",3:"?"})}),felder:[{label:"u =",ok:[[u,T]],units:wahl(T)}],kat:"ul"+u,loes:`u = ${L(u,T)}`,
+        tipp:umfTipp(F,u),ex:`fehlend: ${L(F.k[0],T)} − ${L(F.k[4],T)} = ${L(F.k[2],T)} und ${L(F.k[5],T)} − ${L(F.k[1],T)} = ${L(F.k[3],T)}<br>u = ${F.k.map(v=>L(v,T)).join(" + ")} = ${L(u,T)}`};}
+    if(t<7){const F=zufU(),u=F.u;
+      return{q:"Zwei Seiten fehlen. Überlege sie dir und berechne den Umfang u.",svg:zfig({pts:F.pts,lab:Object.assign(labAlle(F,T,[1,2,5]),{1:"?",2:"?"})}),felder:[{label:"u =",ok:[[u,T]],units:wahl(T)}],kat:"uu"+u,loes:`u = ${L(u,T)}`,
+        tipp:umfTipp(F,u),ex:`rechts: gleich lang wie links = ${L(F.k[1],T)}; oben rechts: ${L(F.k[0],T)} − ${L(F.k[6],T)} − ${L(F.k[4],T)} = ${L(F.k[2],T)}<br>u = ${F.k.map(v=>L(v,T)).join(" + ")} = ${L(u,T)}`};}
+    const [g,h,sch]=pick([[6,4,5],[8,3,5],[6,4,5],[10,12,13],[16,6,10],[12,8,10]]),r=rnd(2,6),u=g+2*r+2*sch;
+    return{q:"Haus: Berechne den Umfang u. Die gestrichelte Trennlinie gehört nicht zum Rand.",svg:zfig({pts:[[0,0],[g,0],[g,r],[g/2,r+h*.5],[0,r]],cut:[[[0,r],[g,r]]],lab:{0:L(g,T),1:L(r,T),2:L(sch,T),3:L(sch,T),4:L(r,T)}}),
+      felder:[{label:"u =",ok:[[u,T]],units:wahl(T)}],kat:"uh"+u,loes:`u = ${L(u,T)}`,tipp:x=>gleich(x[0],u+g)?"Die Trennlinie liegt innen. Sie gehört nicht zum Umfang.":"",
+      ex:`u = ${L(g,T)} + ${L(r,T)} + ${L(sch,T)} + ${L(sch,T)} + ${L(r,T)} = ${L(u,T)} (ohne Trennlinie)`};}
+  if(rnd(0,1)){/* gemischte Einheiten */const [W,H,w,h]=pick([[120,80,50,30],[150,100,60,40],[200,150,80,60],[180,120,70,50]]),F=formL(W,H,w,h),u=F.u,mT=rnd(0,1)?"m":"cm";
+    const lab={0:L(W/100,"m"),1:L(H-h,"cm"),2:"?",3:"?",4:L(W-w,"cm"),5:L(H/100,"m")};
+    return{q:`Berechne den Umfang u in ${mT}.`,svg:zfig({pts:F.pts.map(p=>[p[0]/10,p[1]/10]),lab}),felder:[{label:"u =",ok:[[convL(u,"cm",mT),mT]],units:wahl(mT,mT==="m"?"cm":"m")}],kat:"um"+u,loes:`u = ${L(convL(u,"cm",mT),mT)}`,
+      tipp:x=>"",ex:`Erst alles in cm: ${L(W/100,"m")} = ${L(W,"cm")}; ${L(H/100,"m")} = ${L(H,"cm")}<br>fehlend: ${L(w,"cm")} und ${L(h,"cm")}<br>u = ${F.k.map(v=>L(v,"cm")).join(" + ")} = ${L(u,"cm")}${mT==="m"?" = "+L(u/100,"m"):""}`};}
+  const W=pick([5,5.5,6,6.5]),H=pick([3.5,4,4.5]),w=pick([2,2.5]),h=pick([1.5,2]),F=formL(W,H,w,h),u=rund(F.u),ok=[];for(let d=-4;d<=4;d++)ok.push([rund(u+d/10),"cm"]);
+  return{q:"Miss mit dem 📐 Geodreieck alle Seiten und berechne den Umfang u.",svg:zfig({pts:F.pts,real:true}),felder:[{label:"u =",ok,fest:"cm"}],kat:"mu"+u,loes:`u = ${L(u,"cm")}`,
+    ex:`u = ${F.k.map(v=>L(v,"cm")).join(" + ")} = ${L(u,"cm")}<br>Messungen bis 4 mm daneben zählen als richtig.`};}
+
+/* 5-2 Zerlegen: 0★ Trennlinie wählen, Teilflächen · 1★ mit Dreieck/Trapez · 2★ nur A, Einheiten, Messen */
+function teilA(T,a1,a2,o){return[{label:"A① =",ok:[[a1,QU(T)]],fest:QU(T)},{label:"A② =",ok:[[a2,QU(T)]],fest:QU(T)},{label:"A =",ok:[[rund(a1+a2),QU(T)]],fest:QU(T)}];}
+function g52(lv){
+  if(lv===0){
+    if(rnd(0,9)<4){const F=zufL(),[W,H,w,h]=[F.k[0],F.k[5],F.k[2],F.k[3]];
+      const ok=pick([[[W-w,0],[W-w,H-h]],[[0,H-h],[W-w,H-h]]]),falsch=shuffle([[[0,0],[W-w,H]],[[0,H],[W,0]],[[0,0],[W,H-h]]]).slice(0,2),L3=shuffle([ok,...falsch]),nr=L3.indexOf(ok);
+      return{q:"Mit welcher Trennlinie zerlegst du die Figur in zwei Rechtecke?",svg:zfig({pts:F.pts,lines:L3}),opts:["Linie 1","Linie 2","Linie 3"],ans:nr,kat:"tl"+nr,
+        ex:`Linie ${nr+1}: Sie geht senkrecht oder waagerecht von Rand zu Rand. So entstehen zwei Rechtecke.`};}
+    const F=pick([zufL,zufT])(),T=ZT();
+    return{q:"Die Figur ist schon zerlegt. Berechne die Teilflächen und die ganze Fläche.",svg:zfig({pts:F.pts,lab:labAlle(F,T),parts:[{pts:F.zer[0],c:1,n:"①"},{pts:F.zer[1],c:2,n:"②"}],cut:[F.cut]}),
+      felder:teilA(T,F.zerA[0],F.zerA[1]),kat:"z"+F.A,loes:`A = ${L(F.A,QU(T))}`,tipp:x=>"",
+      ex:`A① = ${L(F.zerA[0],QU(T))}, A② = ${L(F.zerA[1],QU(T))}<br>A = ${L(F.zerA[0],QU(T))} + ${L(F.zerA[1],QU(T))} = ${L(F.A,QU(T))}`};}
+  if(lv===1){const T=ZT(),t=rnd(0,2);
+    if(t===0){let g=rnd(4,10),r=rnd(2,6),h=rnd(2,5);if((g*h)%2)g++;const a1=g*r,a2=g*h/2;
+      return{q:"Haus: Berechne die Teilflächen (Rechteck und Dreieck) und die ganze Fläche.",svg:zfig({pts:[[0,0],[g,0],[g,r],[g/2,r+h],[0,r]],lab:{0:L(g,T),1:L(r,T)},parts:[{pts:[[0,0],[g,0],[g,r],[0,r]],c:1,n:"①"},{pts:[[0,r],[g,r],[g/2,r+h]],c:2,n:"②",np:[g*.72,r+h*.28]}],cut:[[[0,r],[g,r]]],dims:[{a:[g/2,r],b:[g/2,r+h],t:L(h,T)}]}),
+        felder:teilA(T,a1,a2),kat:"zh"+(a1+a2),loes:`A = ${L(a1+a2,QU(T))}`,
+        ex:`A① = ${L(g,T)} · ${L(r,T)} = ${L(a1,QU(T))}<br>A② = ${halb} · ${L(g,T)} · ${L(h,T)} = ${L(a2,QU(T))}<br>A = ${L(a1+a2,QU(T))}`};}
+    if(t===1){const a=rnd(6,12),c=a-2*rnd(1,Math.floor((a-2)/2)),r=rnd(2,5);let h=rnd(2,4);if(((a+c)*h)%2)h++;const a1=a*r,a2=(a+c)*h/2,dx=(a-c)/2;
+      return{q:"Rechteck und Trapez: Berechne die Teilflächen und die ganze Fläche.",svg:zfig({pts:[[0,0],[a,0],[a,r],[a-dx,r+h],[dx,r+h],[0,r]],lab:{0:L(a,T),1:L(r,T),3:L(c,T)},parts:[{pts:[[0,0],[a,0],[a,r],[0,r]],c:1,n:"①"},{pts:[[0,r],[a,r],[a-dx,r+h],[dx,r+h]],c:2,n:"②",np:[(a/2+a-dx)/2+.3,r+h*.3]}],cut:[[[0,r],[a,r]]],dims:[{a:[a/2,r],b:[a/2,r+h],t:L(h,T)}]}),
+        felder:teilA(T,a1,a2),kat:"zt"+(a1+a2),loes:`A = ${L(a1+a2,QU(T))}`,
+        ex:`A① = ${L(a,T)} · ${L(r,T)} = ${L(a1,QU(T))}<br>A② = ${halb} · (${L(a,T)} + ${L(c,T)}) · ${L(h,T)} = ${L(a2,QU(T))}<br>A = ${L(a1+a2,QU(T))}`};}
+    const F=zufL();
+    return{q:"Zwei Seiten fehlen. Zerlege die Figur und berechne die Teilflächen und die ganze Fläche.",svg:zfig({pts:F.pts,lab:Object.assign(labAlle(F,T,[2,3]),{2:"?",3:"?"}),parts:[{pts:F.zer[0],c:1,n:"①"},{pts:F.zer[1],c:2,n:"②"}],cut:[F.cut]}),
+      felder:teilA(T,F.zerA[0],F.zerA[1]),kat:"zl"+F.A,loes:`A = ${L(F.A,QU(T))}`,
+      ex:`fehlend: ${L(F.k[2],T)} und ${L(F.k[3],T)}<br>A① = ${L(F.k[4],T)} · ${L(F.k[5],T)} = ${L(F.zerA[0],QU(T))}<br>A② = ${L(F.k[2],T)} · ${L(F.k[1],T)} = ${L(F.zerA[1],QU(T))}<br>A = ${L(F.A,QU(T))}`};}
+  if(rnd(0,1)){const [W,H,w,h,T]=pick([[120,80,50,30,"cm"],[150,100,60,40,"cm"],[200,150,80,60,"m"],[300,200,100,120,"m"]]),F=formL(W,H,w,h),AT=convL(F.A,"cm",T)/(T==="m"?100:1);
+    const lab={0:L(W/100,"m"),1:L(H-h,"cm"),4:L(W-w,"cm"),5:L(H/100,"m")};
+    return{q:`Berechne den Flächeninhalt A in ${QU(T)}.`,svg:zfig({pts:F.pts.map(p=>[p[0]/10,p[1]/10]),lab}),felder:[{label:"A =",ok:[[T==="m"?rund(F.A/10000):F.A,QU(T)]],units:wahl(T,T==="m"?"cm":"m")}],kat:"za"+F.A,
+      loes:`A = ${L(T==="m"?rund(F.A/10000):F.A,QU(T))}`,tipp:x=>"",
+      ex:`Alles in cm: ${L(W/100,"m")} = ${L(W,"cm")}; ${L(H/100,"m")} = ${L(H,"cm")}<br>A = ${L(W-w,"cm")} · ${L(H,"cm")} + ${L(w,"cm")} · ${L(H-h,"cm")} = ${L(F.A,"cm²")}${T==="m"?" = "+L(rund(F.A/10000),"m²"):""}`};}
+  const W=pick([5,6,6.5]),H=pick([3.5,4]),w=pick([2,2.5,3]),h=pick([1.5,2]),F=formL(W,H,w,h),A=rund(F.A),ok=[];const set=new Set();
+  [-.1,0,.1].forEach(a=>[-.1,0,.1].forEach(b=>[-.1,0,.1].forEach(c=>[-.1,0,.1].forEach(d=>set.add(rund((W+a)*(H+b)-(w+c)*(h+d)))))));set.forEach(v=>ok.push([Math.round(v*100)/100,"cm²"]));
+  return{q:"Miss mit dem 📐 Geodreieck die nötigen Seiten. Berechne den Flächeninhalt A.",svg:zfig({pts:F.pts,real:true}),felder:[{label:"A =",ok,fest:"cm²"}],kat:"mz"+A,loes:`A = ${L(A,"cm²")}`,
+    ex:`zum Beispiel: A = ${L(W-w,"cm")} · ${L(H,"cm")} + ${L(w,"cm")} · ${L(H-h,"cm")} = ${L(A,"cm²")}<br>Kleine Messfehler zählen als richtig.`};}
+
+/* 5-3 Ergänzen: 0★ Ecke, Rechteck sichtbar · 1★ U-Form, Kerbe · 2★ Rahmen mit Einheiten, ohne Hilfe */
+function ergF(T,g,s,wort){return[{label:"A groß =",ok:[[g,QU(T)]],fest:QU(T)},{label:"A "+(wort||"Stück")+" =",ok:[[s,QU(T)]],fest:QU(T)},{label:"A =",ok:[[rund(g-s),QU(T)]],fest:QU(T)}];}
+function g53(lv){
+  if(lv===0){const F=zufL(),T=ZT(),[W,H,w,h]=[F.k[0],F.k[5],F.k[2],F.k[3]];
+    return{q:"Ergänze zum großen Rechteck (grau). Berechne das große Rechteck, das fehlende Stück und die Fläche.",svg:zfig({pts:F.pts,lab:labAlle(F,T),comp:F.stueck}),
+      felder:ergF(T,W*H,w*h),kat:"e"+F.A,loes:`A = ${L(F.A,QU(T))}`,tipp:x=>"",ex:`A groß = ${L(W,T)} · ${L(H,T)} = ${L(W*H,QU(T))}<br>A Stück = ${L(w,T)} · ${L(h,T)} = ${L(w*h,QU(T))}<br>A = ${L(W*H,QU(T))} − ${L(w*h,QU(T))} = ${L(F.A,QU(T))}`};}
+  if(lv===1){const T=ZT();
+    if(rnd(0,1)){const F=zufU(),[W,H,n,d]=[F.k[0],F.k[1],F.k[4],F.k[3]];
+      return{q:"Ergänze zum großen Rechteck. Berechne das große Rechteck, das fehlende Stück und die Fläche.",svg:zfig({pts:F.pts,lab:{0:L(W,T),1:L(H,T),3:L(d,T),4:L(n,T)},comp:F.stueck}),
+        felder:ergF(T,W*H,n*d),kat:"eu"+F.A,loes:`A = ${L(F.A,QU(T))}`,ex:`A groß = ${L(W,T)} · ${L(H,T)} = ${L(W*H,QU(T))}<br>A Stück = ${L(n,T)} · ${L(d,T)} = ${L(n*d,QU(T))}<br>A = ${L(F.A,QU(T))}`};}
+    const W=rnd(7,12),H=rnd(4,7);let g=rnd(2,W-3),k=rnd(1,H-2);if((g*k)%2)g++;const x0=(W-g)/2,st=g*k/2,A=W*H-st;
+    return{q:"Rechteck mit dreieckiger Kerbe: Berechne das große Rechteck, die Kerbe und die Fläche.",svg:zfig({pts:[[0,0],[W,0],[W,H],[x0+g,H],[W/2,H-k],[x0,H],[0,H]],lab:{0:L(W,T),1:L(H,T)},comp:[[x0,H],[x0+g,H],[W/2,H-k]],dims:[{a:[x0,H+.7],b:[x0+g,H+.7],t:L(g,T),ext:1},{a:[W/2,H-k],b:[W/2,H],t:L(k,T)}]}),
+      felder:ergF(T,W*H,st,"Kerbe"),kat:"ek"+A,loes:`A = ${L(A,QU(T))}`,tipp:x=>gleich(x[1],g*k)?"Die Kerbe ist ein Dreieck: Denk an das ½.":"",
+      ex:`A groß = ${L(W,T)} · ${L(H,T)} = ${L(W*H,QU(T))}<br>A Kerbe = ${halb} · ${L(g,T)} · ${L(k,T)} = ${L(st,QU(T))}<br>A = ${L(A,QU(T))}`};}
+  if(rnd(0,1)){const [W,H,w,h,T]=pick([[120,80,60,40,"cm"],[100,70,80,50,"cm"],[150,100,1,0.5,"m"],[200,120,1.2,0.8,"m"]]);
+    const Wc=W,Hc=H,wc=T==="m"?w*100:w,hc=T==="m"?h*100:h,A=Wc*Hc-wc*hc,AT=T==="m"?rund(A/10000):A;
+    return{q:`Bilderrahmen mit Loch: Berechne die Fläche des Rahmens in ${QU(T)}.`,svg:zfig({pts:[[0,0],[W/10,0],[W/10,H/10],[0,H/10]],lab:{0:L(W/100,"m"),1:L(H,"cm")},holes:[[[(W-wc)/20,(H-hc)/20],[(W+wc)/20,(H-hc)/20],[(W+wc)/20,(H+hc)/20],[(W-wc)/20,(H+hc)/20]]],htxt:[L(w,T==="m"?"m":"cm")+" breit",L(h,T==="m"?"m":"cm")+" hoch"]}),
+      felder:[{label:"A =",ok:[[AT,QU(T)]],units:wahl(T,T==="m"?"cm":"m")}],kat:"er"+A,loes:`A = ${L(AT,QU(T))}`,tipp:x=>"",
+      ex:`Alles in cm: ${L(W/100,"m")} = ${L(W,"cm")}${T==="m"?`; ${L(w,"m")} = ${L(wc,"cm")}; ${L(h,"m")} = ${L(hc,"cm")}`:""}<br>A = ${L(Wc,"cm")} · ${L(Hc,"cm")} − ${L(wc,"cm")} · ${L(hc,"cm")} = ${L(A,"cm²")}${T==="m"?" = "+L(AT,"m²"):""}`};}
+  const F=zufU(),T=ZT(),[W,H,n,d]=[F.k[0],F.k[1],F.k[4],F.k[3]],x0=F.k[6];
+  return{q:"Berechne den Flächeninhalt A. Ergänzen oder zerlegen – du entscheidest.",svg:zfig({pts:F.pts,lab:{0:L(W,T),1:L(H,T),3:L(d,T),6:L(x0,T)},dims:[{a:[x0,H+.7],b:[x0+n,H+.7],t:L(n,T),ext:1}]}),
+    felder:[{label:"A =",ok:[[F.A,QU(T)]],units:wahl(T)}],kat:"ef"+F.A,loes:`A = ${L(F.A,QU(T))}`,tipp:x=>gleich(x[0],W*H+n*d)?"Das fehlende Stück wird subtrahiert, nicht addiert.":"",
+    ex:`A = ${L(W,T)} · ${L(H,T)} − ${L(n,T)} · ${L(d,T)} = ${L(W*H,QU(T))} − ${L(n*d,QU(T))} = ${L(F.A,QU(T))}`};}
+
+/* 5-4 Sachaufgaben (5 pro Runde) */
+const SACH5=[
+ lv=>{const F=zufL(),T="m",p=pick([18,20,25,30]);const t=`Lenas Zimmer ist L-förmig. Sie bekommt neuen Teppichboden.${lv?` Ein Quadratmeter kostet ${p} €. Wie viel kostet der Teppich?`:" Wie viel Teppichboden braucht sie?"}`;
+   return{q:t+VOR(t),svg:zfig({pts:F.pts,lab:labAlle(F,T)}),felder:lv?[{label:"Kosten:",ok:[[F.A*p,"€"]],fest:"€"}]:[{label:"A =",ok:[[F.A,"m²"]],units:wahl("m")}],kat:"zim",loes:lv?`${L(F.A*p,"€")}`:`A = ${L(F.A,"m²")}`,
+     ex:`A = ${L(F.k[4],T)} · ${L(F.k[5],T)} + ${L(F.k[2],T)} · ${L(F.k[1],T)} = ${L(F.A,"m²")}${lv?`<br>Kosten: ${F.A} · ${L(p,"€")} = ${L(F.A*p,"€")}`:""}`};},
+ lv=>{const F=zufL(),T="m",u=F.u;const t=`Um Lenas L-förmiges Zimmer kommt eine neue Fußleiste. Wie lang muss die Fußleiste rundherum sein?`;
+   return{q:t+VOR(t),svg:zfig({pts:F.pts,lab:Object.assign(labAlle(F,T,lv?[2,3]:[]),lv?{2:"?",3:"?"}:{})}),felder:[{label:"u =",ok:[[u,"m"]],units:wahl("m")}],kat:"fuss",loes:`u = ${L(u,"m")}`,
+     ex:`u = ${F.k.map(v=>L(v,T)).join(" + ")} = ${L(u,"m")}`};},
+ lv=>{let g=pick([40,50,60]),r=pick([30,40]),h=pick([20,30]);const A=g*r+g*h/2,d=pick([400,500]),n=Math.ceil(A/d);
+   const t=`Bauhaus-Poster: Die rote Fläche ist ein Rechteck (${L(g,"cm")} breit, ${L(r,"cm")} hoch) mit einem Dreieck darauf (Höhe ${L(h,"cm")}).${lv?` Eine Dose Farbe reicht für ${L(d,"cm²")}. Wie viele Dosen braucht ihr?`:" Wie groß ist die rote Fläche?"}`;
+   return{q:t+VOR(t),svg:zfig({pts:[[0,0],[g/10,0],[g/10,r/10],[g/20,(r+h)/10],[0,r/10]],lab:{0:L(g,"cm"),1:L(r,"cm")},cut:[[[0,r/10],[g/10,r/10]]],dims:[{a:[g/20,r/10],b:[g/20,(r+h)/10],t:L(h,"cm")}]}),
+     felder:lv?[{label:"Dosen:",ok:[[n,"Dosen"]],fest:"Dosen"}]:[{label:"A =",ok:[[A,"cm²"]],units:wahl("cm")}],kat:"bau",loes:lv?`${n} Dosen`:`A = ${L(A,"cm²")}`,
+     ex:`A = ${L(g,"cm")} · ${L(r,"cm")} + ${halb} · ${L(g,"cm")} · ${L(h,"cm")} = ${L(A,"cm²")}${lv?`<br>${L(A,"cm²")} : ${L(d,"cm²")} = ${fz(rund(A/d))} → aufrunden: ${n} Dosen`:""}`};},
+ lv=>{const [W,H,w,h]=pick([[6,3,2,1],[5,4,3,2],[8,4,4,2],[6,4,2,2]]),A=W*H-w*h,p=pick([0.5,0.4,0.8]);
+   const t=`Schmuckdesign: Ein Anhänger aus Silberblech ist ein Rechteck (${L(W,"cm")} × ${L(H,"cm")}) mit einem rechteckigen Loch (${L(w,"cm")} × ${L(h,"cm")}).${lv?` Ein Quadratzentimeter Silberblech kostet ${L(p,"€")}. Wie viel kostet das Silber?`:" Wie viel Silberblech braucht man?"}`;
+   return{q:t+VOR(t),svg:zfig({pts:[[0,0],[W,0],[W,H],[0,H]],lab:{0:L(W,"cm"),1:L(H,"cm")},holes:[[[(W-w)/2,(H-h)/2],[(W+w)/2,(H-h)/2],[(W+w)/2,(H+h)/2],[(W-w)/2,(H+h)/2]]]}),
+     felder:lv?[{label:"Kosten:",ok:[[rund(A*p),"€"]],fest:"€"}]:[{label:"A =",ok:[[A,"cm²"]],units:wahl("cm")}],kat:"sch",loes:lv?L(rund(A*p),"€"):`A = ${L(A,"cm²")}`,
+     ex:`A = ${L(W,"cm")} · ${L(H,"cm")} − ${L(w,"cm")} · ${L(h,"cm")} = ${L(A,"cm²")}${lv?`<br>Kosten: ${A} · ${L(p,"€")} = ${L(rund(A*p),"€")}`:""}`};},
+ lv=>{const [a,r,c,h]=pick([[20,12,6,4],[16,10,4,3],[24,10,8,4],[18,12,6,5]]),dx=(a/2-c)/2,A=a*r+(a/2+c)*h/2,p=pick([20,25,30]);
+   const t=`Skatepark: Die Fläche besteht aus einem Rechteck (${L(a,"m")} × ${L(r,"m")}) und einer Rampe in Trapezform (parallele Seiten ${L(a/2,"m")} und ${L(c,"m")}, Höhe ${L(h,"m")}).${lv?` Ein Quadratmeter neuer Belag kostet ${p} €. Wie viel kostet der Belag?`:" Wie groß ist die ganze Fläche?"}`;
+   return{q:t+VOR(t),svg:zfig({pts:[[0,0],[a,0],[a,r],[a-dx,r+h],[a/2+dx,r+h],[a/2,r],[0,r]],lab:{0:L(a,"m"),1:L(r,"m"),3:L(c,"m")},cut:[[[a/2,r],[a,r]]]}),
+     felder:lv?[{label:"Kosten:",ok:[[A*p,"€"]],fest:"€"}]:[{label:"A =",ok:[[A,"m²"]],units:wahl("m")}],kat:"ska",loes:lv?L(A*p,"€"):`A = ${L(A,"m²")}`,
+     ex:`A = ${L(a,"m")} · ${L(r,"m")} + ${halb} · (${L(a/2,"m")} + ${L(c,"m")}) · ${L(h,"m")} = ${L(A,"m²")}${lv?`<br>Kosten: ${A} · ${L(p,"€")} = ${L(A*p,"€")}`:""}`};},
+ lv=>{const F=zufU(),T="m",kg=pick([1,2]),q=40;const t=`Im Schulgarten wird ein U-förmiges Beet mit Rasen eingesät.${lv?` 1 kg Rasensamen reicht für 40 m². Wie viele kg braucht ihr? (aufrunden)`:" Wie groß ist die Fläche?"}`,n=Math.ceil(F.A/q);
+   return{q:t+VOR(t),svg:zfig({pts:F.pts,lab:{0:L(F.k[0],T),1:L(F.k[1],T),3:L(F.k[3],T),4:L(F.k[4],T)},comp:lv?null:F.stueck}),
+     felder:lv?[{label:"Rasensamen:",ok:[[n,"kg"]],fest:"kg"}]:[{label:"A =",ok:[[F.A,"m²"]],units:wahl("m")}],kat:"gar",loes:lv?L(n,"kg"):`A = ${L(F.A,"m²")}`,
+     ex:`A = ${L(F.k[0],T)} · ${L(F.k[1],T)} − ${L(F.k[4],T)} · ${L(F.k[3],T)} = ${L(F.A,"m²")}${lv?`<br>${L(F.A,"m²")} : 40 m² = ${fz(rund(F.A/40))} → aufrunden: ${L(n,"kg")}`:""}`};}];
+function g54(lv){return pick(SACH5)(lv);}
+
+/* ================= Master-Level ================= */
+function knobel(){const a=rnd(2,6),b=rnd(2,6),A=a*b,u=2*(a+b);
+  const V=pick([
+    [`Ein Rechteck hat A = ${L(A,"cm²")}. Eine Seite wird verdoppelt. Wie groß ist die neue Fläche?`,2*A,[A,4*A,A+2],"Eine Seite doppelt → Fläche doppelt."],
+    [`Ein Rechteck hat A = ${L(A,"cm²")}. Beide Seiten werden verdoppelt. Wie groß ist die neue Fläche?`,4*A,[2*A,A+4,3*A],"Beide Seiten doppelt → Fläche 2 · 2 = 4-mal so groß."],
+    [`Ein Rechteck hat A = ${L(A,"cm²")}. Beide Seiten werden verdreifacht. Wie groß ist die neue Fläche?`,9*A,[3*A,6*A,A+9],"Beide Seiten dreifach → Fläche 3 · 3 = 9-mal so groß."],
+    [`Ein Rechteck hat A = ${L(A,"cm²")}. Eine Seite wird verdoppelt, die andere halbiert. Wie groß ist die neue Fläche?`,A,[2*A,A/2,4*A],"Doppelt und halb heben sich auf → Fläche bleibt gleich."],
+    [`Ein Rechteck hat u = ${L(u,"cm")}. Beide Seiten werden verdoppelt. Wie groß ist der neue Umfang?`,2*u,[4*u,u+4,u],"Beim Umfang wird alles nur verdoppelt → 2-mal so groß."]]);
+  const s=a*2,Aq=s*s;if(rnd(0,4)===0)return Object.assign(mc(`Ein Quadrat hat die Seitenlänge ${L(s,"cm")}. Die Seite wird halbiert. Wie groß ist die neue Fläche?`,"",L(Aq/4,"cm²"),[L(Aq/2,"cm²"),L(Aq,"cm²"),L(Aq/8,"cm²")],`Neue Seite: ${L(s/2,"cm")}, A = ${L(s/2,"cm")} · ${L(s/2,"cm")} = ${L(Aq/4,"cm²")} – nur ein Viertel!`),{kat:"kq"});
+  const u2=V[0].includes("u =")?"cm":"cm²";return Object.assign(mc(V[0],"",L(V[1],u2),V[2].map(x=>L(rund(x),u2)),V[3]),{kat:"k"+V[1]});}
+function knifflig(){const t=rnd(0,3);
+  if(t===0){const a=pick([20,30,40]),r=pick([3,4,5]),A=a*a-(a-2*r)**2;
+    return{q:`Ein quadratischer Bilderrahmen ist außen ${L(a,"cm")} breit. Der Rand ist überall ${L(r,"cm")} breit. Wie groß ist die Fläche des Rahmens?`,
+      svg:zfig({pts:[[0,0],[a,0],[a,a],[0,a]],lab:{0:L(a,"cm")},holes:[[[r,r],[a-r,r],[a-r,a-r],[r,a-r]]],htxt:["Rand: "+L(r,"cm")]}),felder:[{label:"A =",ok:[[A,"cm²"]],fest:"cm²"}],kat:"kr"+A,loes:`A = ${L(A,"cm²")}`,
+      tipp:x=>gleich(x[0],a*a-(a-r)**2)?"Das Loch ist auf beiden Seiten um den Rand kleiner: a − 2 · Rand.":"",ex:`Loch: ${L(a,"cm")} − 2 · ${L(r,"cm")} = ${L(a-2*r,"cm")}<br>A = ${L(a*a,"cm²")} − ${L((a-2*r)**2,"cm²")} = ${L(A,"cm²")}`};}
+  if(t===1){const s=pick([10,12,8]),e=pick([2,3]),A=s*s-4*e*e;
+    return{q:`Aus einem Quadrat mit ${L(s,"cm")} Seitenlänge wird an jeder Ecke ein Quadrat mit ${L(e,"cm")} Seitenlänge ausgeschnitten. Wie groß ist die Restfläche, und wie groß ist ihr Umfang?`,
+      svg:zfig({pts:[[e,0],[s-e,0],[s-e,e],[s,e],[s,s-e],[s-e,s-e],[s-e,s],[e,s],[e,s-e],[0,s-e],[0,e],[e,e]],lab:{}}),felder:[{label:"A =",ok:[[A,"cm²"]],fest:"cm²"},{label:"u =",ok:[[4*s,"cm"]],fest:"cm"}],kat:"ke"+A,loes:`A = ${L(A,"cm²")}, u = ${L(4*s,"cm")}`,
+      ex:`A = ${L(s*s,"cm²")} − 4 · ${L(e*e,"cm²")} = ${L(A,"cm²")}<br>Der Umfang bleibt gleich wie beim Quadrat: u = 4 · ${L(s,"cm")} = ${L(4*s,"cm")}`};}
+  if(t===2){const [e,f,a]=pick([[8,6,5],[6,8,5],[24,10,13],[16,12,10]]),u=4*a,A=e*f/2;
+    return{q:`Eine Raute hat den Umfang ${L(u,"cm")} und die Diagonalen ${L(e,"cm")} und ${L(f,"cm")}. Wie lang ist eine Seite, und wie groß ist die Fläche?`,svg:"",
+      felder:[{label:"a =",ok:[[a,"cm"]],fest:"cm"},{label:"A =",ok:[[A,"cm²"]],fest:"cm²"}],kat:"kra"+a,loes:`a = ${L(a,"cm")}, A = ${L(A,"cm²")}`,ex:`a = ${L(u,"cm")} : 4 = ${L(a,"cm")}<br>A = ${halb} · ${L(e,"cm")} · ${L(f,"cm")} = ${L(A,"cm²")}`};}
+  const [ev,fv]=pick([[1.2,50],[0.8,60],[1,45],[1.5,40]]),A=rund(ev*100*fv/2);
+  return{q:`Ein Drachen hat die Diagonalen ${L(ev,"m")} und ${L(fv,"cm")}. Wie viel Papier braucht man in cm²?`,svg:"",felder:[{label:"A =",ok:[[A,"cm²"]],fest:"cm²"}],kat:"kd"+A,loes:`A = ${L(A,"cm²")}`,
+    tipp:x=>gleich(x[0],rund(ev*fv/2))?"Erst gleiche Einheiten: Rechne die Meter in Zentimeter um.":"",ex:`${L(ev,"m")} = ${L(ev*100,"cm")}<br>A = ${halb} · ${L(ev*100,"cm")} · ${L(fv,"cm")} = ${L(A,"cm²")}`};}
+const MASTER={id:"M",name:"Master-Level",gen:lv=>{const r=rnd(0,9);return r<4?knobel():knifflig();}};
+
+const BOSS={id:"m",name:"Endgegner",gen:lv=>{const t=pick(ALLE.filter(x=>!x.opt));return t.gen(Math.min(2,1+lv));}};
+try{window.__T={g51,g52,g53,g54,MASTER,g41,g42,g43,g44,get S(){return S},ALLE,offen,bossOffen,home:()=>home(),start:id=>start(id)};}catch(e){}
 
 /* ================= Ansichten ================= */
 const app=document.getElementById("app"), zahlEl=document.getElementById("zahl"), zaehler=document.getElementById("zaehler"), mzahl=document.getElementById("mzahl"), muenzer=document.getElementById("muenzer");
@@ -1000,12 +1368,12 @@ function home(){
   for(const L of LEVELS){
     if(!L.spiele){h+=`<section class="lv zu"><div class="badge">🔒</div><div class="lvkopf"><div><div class="tag">LEVEL ${L.nr}</div><h2>${L.name}</h2></div><div class="klein">${L.info}</div></div></section>`;continue;}
     const n=L.spiele.length, max=n*3, hat=L.spiele.reduce((a,s)=>a+stars(s.id),0);
-    let fertig=0;for(const s of L.spiele){if(stars(s.id)>=1)fertig++;else break;}
+    let fertig=0;for(const s of L.spiele){if(s.opt)continue;if(stars(s.id)>=1)fertig++;else break;}
     const fill=n>1?Math.min(fertig,n-1)/(n-1)*100:0;
     h+=`<section class="lv ${L.spiele.some(offen)?"aktiv":"zu"}"><div class="badge">${L.nr}</div><div class="lvkopf"><div><div class="tag">LEVEL ${L.nr}</div><h2>${L.name}</h2></div>
       <div class="zahl">${STERN(true)} ${hat} von ${max} Sternen</div></div><div class="bahn"><div class="linie"><i style="width:${fill}%"></i></div>`;
     for(const s of L.spiele){const o=offen(s), st=stars(s.id), cls=!o?"zu":st>=1?"fertig":"jetzt";
-      h+=`<div class="node ${cls}"><button class="kreis" data-play="${s.id}" ${o?"":"disabled"} aria-label="${s.name}${o?"":" (gesperrt)"}">${o?s.nr:"🔒"}</button><b>${s.name}</b>
+      h+=`<div class="node ${cls}"><button class="kreis" data-play="${s.id}" ${o?"":"disabled"} aria-label="${s.name}${o?"":" (gesperrt)"}">${o?s.nr:"🔒"}</button><b>${s.name}</b>${s.hinweis?`<span class="klein" style="display:block;color:#ffe08a">${s.hinweis}</span>`:""}
         ${cls==="jetzt"?`<button class="btn" data-play="${s.id}">▶ Spielen</button>`:`<div class="sterne">${reihe(st)}</div>`}${(S.bonus[s.id]||0)?`<span class="bonus" title="Bonussterne">+${S.bonus[s.id]} Bonus</span>`:""}</div>`;}
     h+=`</div></section>`;
   }
@@ -1013,8 +1381,10 @@ function home(){
   h+=`<section class="lv boss${bo?" aktiv":" zu"}"><div class="badge">${bo?"⚔":"🔒"}</div><div class="lvkopf"><div><div class="tag">FINALE</div><h2>Endgegner</h2><div class="klein">Aufgaben aus allen Leveln</div></div>
     ${bo?`<div class="zahl">${STERN(true)} ${stars("m")} von 3 Sternen</div>`:`<div class="klein">${ALLE_GEBAUT?"":"kommt bald · "}erscheint, wenn jedes Spiel mindestens einen Stern hat</div>`}</div>
     ${bo?`<div class="bossrow"><div class="sterne">${reihe(stars("m"))}</div>${(S.bonus.m||0)?`<span class="bonus">+${S.bonus.m} Bonus</span>`:""}<button class="btn gold" data-play="m">⚔ Kämpfen</button></div>`:""}</section>`;
-  h+=`<section class="lv master zu"><div class="badge">🔒</div><div class="lvkopf"><div><div class="tag">NACH DEM ENDGEGNER</div><h2>Master-Level</h2><div class="klein">Knobeleien für echte Profis</div></div>
-    <div class="klein">${MASTER_GEBAUT?"":"kommt bald · "}erscheint, wenn der Endgegner besiegt ist</div></div></section></div>`;
+  const mo=masterOffen();
+  h+=`<section class="lv master${mo?" aktiv":" zu"}"><div class="badge">${mo?"★":"🔒"}</div><div class="lvkopf"><div><div class="tag">NACH DEM ENDGEGNER</div><h2>Master-Level</h2><div class="klein">Knobeleien für echte Profis</div></div>
+    ${mo?`<div class="zahl">${STERN(true)} ${stars("M")} von 3 Sternen</div>`:`<div class="klein">erscheint, wenn der Endgegner besiegt ist</div>`}</div>
+    ${mo?`<div class="bossrow"><div class="sterne">${reihe(stars("M"))}</div>${(S.bonus.M||0)?`<span class="bonus">+${S.bonus.M} Bonus</span>`:""}<button class="btn gold" data-play="M">★ Knobeln</button></div>`:""}</section></div>`;
   h+=`<details${lehrerMsg?" open":""}><summary>Für die Lehrkraft</summary><div class="lehrer">
     <input type="text" id="code" placeholder="Lehrer-Code" autocomplete="off" aria-label="Lehrer-Code">
     <button class="btn hell" id="codeBtn">Alle Spiele freischalten</button>
@@ -1038,7 +1408,7 @@ let R=null, letzte="";
 const schluessel=a=>a.key||a.q+"|"+(a.svg||"").replace(/<li>[^<]*<\/li>/g,"").replace(/ data-vor="[^"]*"/g,"")+"|"+(a.opts?a.opts.slice().sort().join("/"):a.loes);
 function start(id){
   zahlEl.textContent=summe();
-  const spiel=id==="m"?BOSS:ALLE.find(t=>t.id===id);
+  const spiel=id==="m"?BOSS:id==="M"?MASTER:ALLE.find(t=>t.id===id);
   const lv=Math.min(2,stars(id));
   R={spiel,id,lv,n:spiel.runde||RUNDE,i:0,res:[],aufgaben:[]};
   const seen=new Set();let versuche=0;
@@ -1060,7 +1430,7 @@ function start(id){
 const punkte=()=>`<div class="dots" aria-label="Fortschritt">${R.aufgaben.map((_,i)=>`<span class="dot ${R.res[i]===true?"ok":R.res[i]==="gelb"?"gelb":R.res[i]===false?"err":i===R.i?"now":""}"></span>`).join("")}</div>`;
 const fehlerAnzeige=()=>{const f=R.res.filter(x=>x===false).length;return `<span id="fehlz" class="fehlz${f>erlaubt(R.n)?" zuviel":""}">Fehler: ${f} (erlaubt: ${erlaubt(R.n)})</span>`;};
 function kopf(){
-  const name=R.id==="m"?"Endgegner":`Spiel ${R.spiel.nr}: ${R.spiel.name}`;
+  const name=R.id==="m"?"Endgegner":R.id==="M"?"Master-Level":`Spiel ${R.spiel.nr}: ${R.spiel.name}`;
   return `<div class="bar"><span class="titel">${name}<small>Schwierigkeit ${"★".repeat(R.lv+1)}</small></span>${fehlerAnzeige()}<button class="btn hell" id="abbr">Zur Übersicht</button></div>${punkte()}`;
 }
 function show(){
@@ -1245,32 +1615,4 @@ addEventListener('resize',()=>{for(const k in linien)linien[k]=[];zeichne()});
 
 zeichne();
 })();
-</script><!-- Mathe-Base: Zurück-Knopf zur Trainer-Klassenseite -->
-<style id="mb-zurueck-style">
-#mb-leiste{display:block;width:100%;box-sizing:border-box;padding:8px 10px 6px;margin:0;text-align:left;position:relative;z-index:50}
-#mb-zurueck{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:999px;background:rgba(10,8,40,.9);color:#fff !important;border:1.5px solid rgba(94,228,255,.85);box-shadow:0 0 10px rgba(94,228,255,.45);font:700 14px/1 "Segoe UI",system-ui,-apple-system,sans-serif;text-decoration:none !important;letter-spacing:0;text-transform:none;cursor:pointer}
-#mb-zurueck:hover{background:rgba(30,30,90,.95)}
-#mb-zurueck:focus-visible{outline:3px solid #ffd166;outline-offset:3px}
-@media print{#mb-leiste{display:none}}
-</style>
-<script id="mb-zurueck-script">
-(function(){
-  var K='mbTrainerKlasse', ziel='https://frauklugmann.github.io/trainer/';
-  try{
-    var m=(document.referrer||'').match(/^https:\/\/frauklugmann\.github\.io\/trainer\/(klasse\d+|oberstufe)\/?/);
-    if(m){sessionStorage.setItem(K,'https://frauklugmann.github.io/trainer/'+m[1]+'/');}
-    var s=sessionStorage.getItem(K); if(s){ziel=s;}
-  }catch(e){}
-  function einbauen(){
-    if(document.getElementById('mb-leiste')) return;
-    var leiste=document.createElement('div'); leiste.id='mb-leiste';
-    var a=document.createElement('a'); a.id='mb-zurueck'; a.href=ziel;
-    a.setAttribute('aria-label','Zurück zur Trainer-Übersicht deiner Klasse');
-    a.textContent='← Zurück';
-    leiste.appendChild(a);
-    document.body.insertBefore(leiste, document.body.firstChild);
-  }
-  if(document.body){einbauen();}else{document.addEventListener('DOMContentLoaded',einbauen);}
-})();
-</script>
-</body></html>
+</script></body></html>
